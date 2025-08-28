@@ -1,0 +1,91 @@
+services:
+  # Databases
+  postgres-user:
+    image: postgres:15-alpine
+    container_name: studybuddy-user-db
+    environment:
+      POSTGRES_DB: studybuddy_users
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: your_password
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_user_data:/var/lib/postgresql/data
+    networks:
+      - studybuddy-network
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Services
+  user-service:
+    build:
+      context: ./services/user-service
+      dockerfile: Dockerfile
+    container_name: studybuddy-user-service
+    env_file:
+      - ./services/user-service/.env
+    ports:
+      - '5001:5001'
+    depends_on:
+      postgres-user:
+        condition: service_healthy
+    networks:
+      - studybuddy-network
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -f http://localhost:5001/health || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  api-gateway:
+    build:
+      context: ./services/api-gateway
+      dockerfile: Dockerfile
+    container_name: studybuddy-api-gateway
+    env_file:
+      - ./services/api-gateway/.env
+    ports:
+      - '3001:3001'
+    depends_on:
+      user-service:
+        condition: service_healthy
+    networks:
+      - studybuddy-network
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -f http://localhost:3001/health || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 25s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: studybuddy-frontend
+    environment:
+      NODE_ENV: production
+      REACT_APP_API_URL: http://api-gateway:3001
+    ports:
+      - '3000:80'
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+    networks:
+      - studybuddy-network
+    restart: unless-stopped
+
+volumes:
+  postgres_user_data:
+
+networks:
+  studybuddy-network:
+    driver: bridge

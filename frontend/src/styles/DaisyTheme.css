@@ -1,0 +1,175 @@
+/* StudyBuddy AI Brand Theme - Tailwind Overrides */
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap');
+@import 'tailwindcss';
+
+/* Font Family */
+* {
+  font-family: 'JetBrains Mono', 'Consolas', 'Monaco', 'Courier New', monospace;
+}
+
+@plugin "daisyui" {
+  /* Remove style added to root when modal/drawer is open */
+  exclude: rootscrollgutter;
+}
+
+@plugin "daisyui/theme" {
+  name: 'StudyBuddy';
+  default: true;
+  color-scheme: light;
+
+  /* Base Colors - Clean Glass Foundation */
+  --color-base-100: #ffffff; /* Pure White - Main Background */
+  --color-base-200: #f1f5f9; /* Light Slate - Glass Surfaces */
+  --color-base-300: #e2e8f0; /* Medium Slate - Borders/Dividers */
+  --color-base-content: #1e293b; /* Dark Slate - Primary Text */
+
+  /* Primary - Neural Blue */
+  --color-primary: #2563eb; /* Vibrant Intelligence Blue */
+  --color-primary-focus: #1d4ed8; /* Deep Neural Blue */
+  --color-primary-content: #ffffff;
+
+  /* Secondary - Knowledge Purple */
+  --color-secondary: #7c3aed; /* Vibrant Learning Purple */
+  --color-secondary-focus: #6d28d9; /* Deep Knowledge Purple */
+  --color-secondary-content: #ffffff;
+
+  /* Accent - Creative Pink */
+  --color-accent: #ec4899; /* Electric Creativity Pink */
+  --color-accent-focus: #db2777; /* Deep Creative Pink */
+  --color-accent-content: #ffffff;
+
+  /* Neutral - Tech Gray */
+  --color-neutral: #64748b; /* Balanced Tech Gray */
+  --color-neutral-focus: #475569; /* Darker Tech Gray */
+  --color-neutral-content: #ffffff;
+
+  /* Status Colors */
+  --color-info: #0ea5e9; /* Bright Cyber Blue */
+  --color-info-content: #ffffff;
+
+  --color-success: #059669; /* Achievement Emerald */
+  --color-success-content: #ffffff;
+
+  --color-warning: #d97706; /* Focus Amber */
+  --color-warning-content: #ffffff;
+
+  --color-error: #dc2626; /* Alert Red */
+  --color-error-content: #ffffff;
+
+  /* Custom Light Theme Extensions - Equivalent to Dark Theme */
+  --color-terminal-bg: #ffffff; /* Terminal Background (same as base-100) */
+  --color-terminal-card: rgba(
+    241,
+    245,
+    249,
+    0.8
+  ); /* Terminal Card with transparency (base-200 with alpha) */
+  --color-terminal-border: rgba(
+    226,
+    232,
+    240,
+    0.5
+  ); /* Terminal Borders (base-300 with alpha) */
+  --color-terminal-header: rgba(
+    241,
+    245,
+    249,
+    0.5
+  ); /* Terminal Header (base-200 with alpha) */
+  --color-cyber-glow: rgba(
+    37,
+    99,
+    235,
+    0.2
+  ); /* Blue Glow Effect (primary with alpha) */
+  --color-grid-lines: rgba(
+    37,
+    99,
+    235,
+    0.3
+  ); /* Grid Pattern (primary with alpha) */
+  --color-scan-line: #2563eb; /* Scanning Lines (primary color) */
+  --color-text-muted: #64748b; /* Muted Text (neutral) */
+  --color-text-secondary: #94a3b8; /* Secondary Text */
+
+  --rounded-box: 24px;
+  --rounded-btn: 16px;
+  --rounded-badge: 50%;
+}
+
+@plugin "daisyui/theme" {
+  name: 'StudyBuddy-Dark';
+  color-scheme: dark;
+
+  /* Base Colors - Cyberpunk Dark Foundation */
+  --color-base-100: #0f172a; /* Deep Space - Main Background */
+  --color-base-200: #1e293b; /* Dark Slate - Terminal Cards */
+  --color-base-300: #334155; /* Medium Slate - Borders/Dividers */
+  --color-base-content: #f8fafc; /* Light Slate - Primary Text */
+
+  /* Primary - Glowing Cyan (matches your login) */
+  --color-primary: #22d3ee; /* Bright Cyan - Main Interactive */
+  --color-primary-focus: #06b6d4; /* Deep Cyan Focus */
+  --color-primary-content: #0f172a; /* Dark text on cyan */
+
+  /* Secondary - Neural Blue */
+  --color-secondary: #3b82f6; /* Electric Blue */
+  --color-secondary-focus: #2563eb; /* Deep Blue Focus */
+  --color-secondary-content: #ffffff; /* White text on blue */
+
+  /* Accent - Terminal Green */
+  --color-accent: #10b981; /* Matrix Green */
+  --color-accent-focus: #059669; /* Deep Green Focus */
+  --color-accent-content: #ffffff; /* White text on green */
+
+  /* Neutral - Cyber Grays */
+  --color-neutral: #64748b; /* Medium Cyber Gray */
+  --color-neutral-focus: #475569; /* Darker Cyber Gray */
+  --color-neutral-content: #f1f5f9; /* Light content */
+
+  /* Status Colors - Cyberpunk Palette */
+  --color-info: #22d3ee; /* Cyan Info */
+  --color-info-content: #0f172a;
+
+  --color-success: #10b981; /* Terminal Green Success */
+  --color-success-content: #ffffff;
+
+  --color-warning: #f59e0b; /* Cyber Amber Warning */
+  --color-warning-content: #0f172a;
+
+  --color-error: #ef4444; /* Alert Red Error */
+  --color-error-content: #ffffff;
+
+  /* Custom Cyberpunk Extensions */
+  --color-terminal-bg: #0f172a; /* Terminal Background */
+  --color-terminal-card: rgba(
+    30,
+    41,
+    59,
+    0.8
+  ); /* Terminal Card with transparency */
+  --color-terminal-border: rgba(51, 65, 85, 0.5); /* Terminal Borders */
+  --color-terminal-header: rgba(30, 41, 59, 0.5); /* Terminal Header */
+  --color-cyber-glow: rgba(34, 211, 238, 0.2); /* Cyan Glow Effect */
+  --color-grid-lines: rgba(34, 211, 238, 0.3); /* Grid Pattern */
+  --color-scan-line: #22d3ee; /* Scanning Lines */
+  --color-text-muted: #64748b; /* Muted Terminal Text */
+  --color-text-secondary: #94a3b8; /* Secondary Terminal Text */
+
+  --rounded-box: 8px; /* More angular for cyber feel */
+  --rounded-btn: 8px;
+  --rounded-badge: 4px;
+}
+
+/* Additional typography enhancements for JetBrains Mono */
+.font-mono {
+  font-feature-settings: 'liga' 1, 'calt' 1; /* Enable ligatures */
+}
+
+/* Enhance code-like elements */
+code,
+pre,
+.terminal-text {
+  font-variant-ligatures: contextual;
+  text-rendering: optimizeLegibility;
+}

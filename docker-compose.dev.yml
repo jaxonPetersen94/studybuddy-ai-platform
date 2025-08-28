@@ -1,0 +1,109 @@
+services:
+  # Development Databases Only
+  # Services run locally with npm run dev
+
+  postgres-user:
+    image: postgres:15-alpine
+    container_name: studybuddy-user-db-dev
+    environment:
+      POSTGRES_DB: studybuddy_users
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: your_password
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_user_data_dev:/var/lib/postgresql/data
+      - ./services/user-service/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - studybuddy-dev-network
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  postgres-document:
+    image: postgres:15-alpine
+    container_name: studybuddy-document-db-dev
+    environment:
+      POSTGRES_DB: studybuddy_documents
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: your_password
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - '5433:5432'
+    volumes:
+      - postgres_document_data_dev:/var/lib/postgresql/data
+    networks:
+      - studybuddy-dev-network
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  mongo-ai:
+    image: mongo:7-jammy
+    container_name: studybuddy-ai-db-dev
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: your_password
+      MONGO_INITDB_DATABASE: studybuddy_ai
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongo_ai_data_dev:/data/db
+    networks:
+      - studybuddy-dev-network
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'mongosh', '--eval', "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Optional: Development tools
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: studybuddy-pgadmin-dev
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@studybuddy.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - '8080:80'
+    depends_on:
+      - postgres-user
+      - postgres-document
+    networks:
+      - studybuddy-dev-network
+    restart: unless-stopped
+
+  mongo-express:
+    image: mongo-express:latest
+    container_name: studybuddy-mongo-express-dev
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: admin
+      ME_CONFIG_MONGODB_ADMINPASSWORD: your_password
+      ME_CONFIG_MONGODB_URL: mongodb://admin:your_password@mongo-ai:27017/
+      ME_CONFIG_BASICAUTH_USERNAME: admin
+      ME_CONFIG_BASICAUTH_PASSWORD: admin123
+    ports:
+      - '8081:8081'
+    depends_on:
+      - mongo-ai
+    networks:
+      - studybuddy-dev-network
+    restart: unless-stopped
+
+volumes:
+  postgres_user_data_dev:
+  postgres_document_data_dev:
+  mongo_ai_data_dev:
+
+networks:
+  studybuddy-dev-network:
+    driver: bridge
