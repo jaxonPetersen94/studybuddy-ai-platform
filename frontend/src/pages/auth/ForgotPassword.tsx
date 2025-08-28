@@ -1,15 +1,9 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Mail,
-  ArrowLeft,
-  Zap,
-  Terminal,
-  CheckCircle,
-  RefreshCw,
-} from 'lucide-react';
+import { Mail, ArrowLeft, Zap, CheckCircle, RefreshCw } from 'lucide-react';
 import TerminalCard from '../../components/layout/TerminalCard';
 import { authService } from '../../services/authService';
+import AuthHeader from '../../components/layout/AuthHeader';
 
 const ForgotPassword: React.FC = () => {
   const navigate = useNavigate();
@@ -86,18 +80,7 @@ const ForgotPassword: React.FC = () => {
       <div className="relative z-10 flex items-center justify-center min-h-screen px-4 py-8">
         <div className="w-full max-w-md">
           {/* Header */}
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 mb-6 bg-base-200 border-2 border-primary/30 rounded-box relative">
-              <Terminal className="text-2xl text-primary" />
-              <div className="absolute -inset-1 bg-gradient-to-r from-primary to-secondary rounded-box blur opacity-20"></div>
-            </div>
-            <h1 className="text-3xl font-bold text-base-content mb-2 tracking-tight">
-              StudyBuddy AI
-            </h1>
-            <p className="text-base-content/60 text-sm font-mono">
-              // Password Recovery System
-            </p>
-          </div>
+          <AuthHeader subtitle="// Password Recovery System" />
 
           {/* Main TerminalCard */}
           <TerminalCard title="password_recovery.terminal">

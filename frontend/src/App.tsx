@@ -5,6 +5,7 @@ import ProtectedRoute from './components/guards/ProtectedRoute';
 import ErrorBoundary from './components/guards/ErrorBoundary';
 import Dashboard from './pages/dashboard/Dashboard';
 import ForgotPassword from './pages/auth/ForgotPassword';
+import ResetPassword from './pages/auth/ResetPassword';
 import Background from './components/layout/Background';
 import Header from './components/layout/header/Header';
 import AuthForm from './pages/auth/AuthForm';
@@ -39,6 +40,9 @@ function App() {
           <Route path="/" element={<HomeRoute />} />
           <Route path="/login" element={<AuthForm />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
+
+          {/* Password reset route (not protected) */}
+          <Route path="/reset-password/:token" element={<ResetPassword />} />
 
           <Route
             path="/dashboard"

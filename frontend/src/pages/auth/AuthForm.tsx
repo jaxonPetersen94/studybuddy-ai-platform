@@ -7,13 +7,13 @@ import {
   Lock,
   Github,
   Zap,
-  Terminal,
   Shield,
   Globe,
   User,
 } from 'lucide-react';
 import { useUserStore } from '../../stores/UserStore';
 import TerminalCard from '../../components/layout/TerminalCard';
+import AuthHeader from '../../components/layout/AuthHeader';
 
 const AuthForm: React.FC = () => {
   const navigate = useNavigate();
@@ -128,18 +128,7 @@ const AuthForm: React.FC = () => {
       <div className="relative z-10 flex items-center justify-center min-h-screen px-4 py-8">
         <div className="w-full max-w-md">
           {/* Header */}
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 mb-6 bg-base-200 border-2 border-primary/30 rounded-box relative">
-              <Terminal className="text-2xl text-primary" />
-              <div className="absolute -inset-1 bg-gradient-to-r from-primary to-secondary rounded-box blur opacity-20"></div>
-            </div>
-            <h1 className="text-3xl font-bold text-base-content mb-2 tracking-tight">
-              StudyBuddy AI
-            </h1>
-            <p className="text-base-content/60 text-sm font-mono">
-              // Intelligent Learning Platform
-            </p>
-          </div>
+          <AuthHeader />
 
           {/* Main Terminal-Style Card */}
           <TerminalCard title="auth.terminal">
