@@ -16,5 +16,17 @@ declare namespace NodeJS {
     DB_USERNAME?: string;
     DB_PASSWORD?: string;
     DB_NAME?: string;
+
+    // Email / SMTP
+    SMTP_HOST: string;
+    SMTP_PORT: string;
+    SMTP_SECURE: string;
+    SMTP_USER: string;
+    SMTP_PASS: string;
+    EMAIL_FROM_NAME: string;
+    EMAIL_FROM_ADDRESS: string;
+
+    // Frontend URL
+    FRONTEND_URL: string;
   }
 }

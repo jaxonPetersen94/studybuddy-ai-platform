@@ -20,11 +20,11 @@ export class User {
   @Column({ type: 'varchar' })
   password!: string;
 
-  @Column({ name: 'first_name', type: 'varchar', nullable: true })
-  firstName?: string;
+  @Column({ name: 'first_name', type: 'varchar', nullable: false })
+  firstName!: string;
 
-  @Column({ name: 'last_name', type: 'varchar', nullable: true })
-  lastName?: string;
+  @Column({ name: 'last_name', type: 'varchar', nullable: false })
+  lastName!: string;
 
   @Column({ name: 'profile_picture', type: 'varchar', nullable: true })
   profilePicture?: string;
@@ -69,7 +69,7 @@ export class User {
 
   // Virtual fields
   get fullName(): string {
-    return `${this.firstName || ''} ${this.lastName || ''}`.trim();
+    return `${this.firstName} ${this.lastName}`.trim();
   }
 
   get isVerified(): boolean {

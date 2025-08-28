@@ -1,5 +1,6 @@
 import { Response } from 'express';
 import { authService } from '../services/authService';
+import { emailService } from '../services/emailService';
 import {
   AuthenticatedRequest,
   AuthErrorCodes,
@@ -7,8 +8,8 @@ import {
   LoginCredentials,
   UserProfileUpdateData,
 } from '../types';
-import { validateEmail, validatePassword } from '../utils/validationHandler';
 import { asyncHandler } from '../utils/asyncHandler';
+import { validateEmail, validatePassword } from '../utils/validationHandler';
 
 /**
  * POST /register
@@ -163,12 +164,24 @@ export const forgotPassword = asyncHandler(
       };
     }
 
+    const user = await authService.findUserByEmail(email);
+    if (!user) {
+      // Even if user doesn't exist, return success to prevent email enumeration (dictionary attack)
+      res.json({
+        message: 'Password reset instructions sent to your email',
+      });
+      return;
+    }
+
     const resetToken = await authService.generatePasswordResetToken(email);
 
-    res.json({
-      message: 'Password reset instructions sent to your email',
-      ...(process.env.NODE_ENV === 'development' && { resetToken }),
-    });
+    await emailService.sendPasswordResetEmail(
+      email,
+      user.firstName,
+      resetToken,
+    );
+
+    res.json({ message: 'Password reset instructions sent to your email' });
   },
 );
 

@@ -273,6 +273,13 @@ class AuthService {
   }
 
   /**
+   * Find user by email
+   */
+  async findUserByEmail(email: string): Promise<User | null> {
+    return this.userRepository.findOne({ where: { email } });
+  }
+
+  /**
    * Get user profile by ID
    */
   async getUserProfile(userId: string): Promise<User> {
