@@ -46,6 +46,9 @@ router.post('/login', (req, res) => forwardRequest(req, res, '/login', 'POST'));
 router.post('/forgot-password', (req, res) =>
   forwardRequest(req, res, '/forgot-password', 'POST'),
 );
+router.post('/reset-password', (req, res) =>
+  forwardRequest(req, res, '/reset-password', 'POST'),
+);
 router.get('/profile', (req, res) =>
   forwardRequest(req, res, '/profile', 'GET'),
 );
