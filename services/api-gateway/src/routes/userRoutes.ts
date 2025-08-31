@@ -1,8 +1,7 @@
 import express, { Request, Response } from 'express';
 
 const router = express.Router();
-const USER_SERVICE_URL =
-  process.env.USER_SERVICE_URL || 'http://localhost:5001/api/v1/users';
+const USER_SERVICE_URL = `${process.env.USER_SERVICE_BASE_URL}/api/v1/users`;
 
 async function forwardRequest(
   req: Request,
@@ -58,5 +57,17 @@ router.put('/profile', (req, res) =>
 router.delete('/profile', (req, res) =>
   forwardRequest(req, res, '/profile', 'DELETE'),
 );
+
+/**
+ * OAuth Routes
+ */
+router.get('/auth/google', (_req, res) => {
+  const userServiceAuthUrl = `${USER_SERVICE_URL}/auth/google`;
+  res.redirect(userServiceAuthUrl);
+});
+router.get('/auth/github', (_req, res) => {
+  const userServiceAuthUrl = `${USER_SERVICE_URL}/auth/github`;
+  res.redirect(userServiceAuthUrl);
+});
 
 export default router;

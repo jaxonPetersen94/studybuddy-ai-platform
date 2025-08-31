@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Terminal, Bell } from 'lucide-react';
+import { Terminal } from 'lucide-react';
 import ProfileDropdown from './ProfileDropdown';
-import NotificationsDropdown from './notificationsDropdown/NotificationsDropdown';
+import NotificationsDropdown from '../notifications/NotificationsDropdown';
 
 const Header: React.FC = () => {
   const [currentTime, setCurrentTime] = useState(new Date());

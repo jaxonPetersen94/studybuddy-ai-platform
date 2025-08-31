@@ -13,16 +13,6 @@ interface UserJwtPayload extends JwtPayload {
   permissions?: string[];
 }
 
-// Extended request interface for authenticated requests
-export interface AuthenticatedRequest extends Request {
-  user?: {
-    id: string;
-    email: string;
-    role?: string;
-    permissions?: string[];
-  };
-}
-
 // Type guard to check if decoded token has required user fields
 const isUserPayload = (payload: any): payload is UserJwtPayload => {
   return (
@@ -61,7 +51,7 @@ const extractToken = (req: Request): string | null => {
  * This is the primary authentication middleware for most routes
  */
 export const authenticate = async (
-  req: AuthenticatedRequest,
+  req: Request,
   res: Response,
   next: NextFunction,
 ): Promise<void> => {
@@ -100,16 +90,15 @@ export const authenticate = async (
         return;
       }
 
-      const userRole = user.role || decoded.role;
-      const userPermissions = user.permissions || decoded.permissions;
+      // Override role/permissions from token if they exist
+      if (decoded.role && decoded.role !== user.role) {
+        user.role = decoded.role;
+      }
+      if (decoded.permissions && decoded.permissions !== user.permissions) {
+        user.permissions = decoded.permissions;
+      }
 
-      req.user = {
-        id: decoded.id,
-        email: decoded.email,
-        ...(userRole && { role: userRole }),
-        ...(userPermissions && { permissions: userPermissions }),
-      };
-
+      req.user = user;
       next();
     } catch (dbError) {
       console.error('User validation failed:', dbError);
@@ -145,7 +134,7 @@ export const authenticate = async (
  * Skips database validation - use only when performance is critical
  */
 export const authenticateFast = (
-  req: AuthenticatedRequest,
+  req: Request,
   res: Response,
   next: NextFunction,
 ): void => {
@@ -163,12 +152,40 @@ export const authenticateFast = (
     const decoded = jwt.verify(token, JWT_SECRET);
 
     if (isUserPayload(decoded)) {
-      req.user = {
-        id: decoded.id,
-        email: decoded.email,
-        ...(decoded.role && { role: decoded.role }),
-        ...(decoded.permissions && { permissions: decoded.permissions }),
-      };
+      // For fast auth, create a minimal User-like object
+      // Note: This won't have all User entity methods/getters
+      const minimalUser = Object.assign(
+        Object.create(Object.getPrototypeOf({})),
+        {
+          id: decoded.id,
+          email: decoded.email,
+          firstName: '',
+          lastName: '',
+          isEmailVerified: true,
+          isActive: true,
+          authProvider: 'email',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          refreshTokens: [],
+          passwordResets: [],
+          role: decoded.role || 'user',
+          permissions: decoded.permissions || [],
+          password: undefined, // Add password property to match User entity
+          // Add the getter methods manually
+          get fullName() {
+            return `${this.firstName} ${this.lastName}`.trim();
+          },
+          get isVerified() {
+            return this.isEmailVerified;
+          },
+          toJSON() {
+            const { password, ...userWithoutPassword } = this;
+            return userWithoutPassword;
+          },
+        },
+      );
+
+      req.user = minimalUser;
       next();
     } else {
       res.status(401).json({
@@ -198,7 +215,7 @@ export const authenticateFast = (
  * Adds user info if token is valid, but continues without authentication if no token
  */
 export const optionalAuth = async (
-  req: AuthenticatedRequest,
+  req: Request,
   _res: Response,
   next: NextFunction,
 ): Promise<void> => {
@@ -213,23 +230,53 @@ export const optionalAuth = async (
           // Try to get fresh user data, but don't fail if unavailable
           try {
             const user = await authService.getUserProfile(decoded.id);
-            const userRole = user.role || decoded.role;
-            const userPermissions = user.permissions || decoded.permissions;
 
-            req.user = {
-              id: decoded.id,
-              email: decoded.email,
-              ...(userRole && { role: userRole }),
-              ...(userPermissions && { permissions: userPermissions }),
-            };
+            // Override role/permissions from token if they exist
+            if (decoded.role && decoded.role !== user.role) {
+              user.role = decoded.role;
+            }
+            if (
+              decoded.permissions &&
+              decoded.permissions !== user.permissions
+            ) {
+              user.permissions = decoded.permissions;
+            }
+
+            req.user = user;
           } catch {
-            // Fall back to token data if database lookup fails
-            req.user = {
-              id: decoded.id,
-              email: decoded.email,
-              ...(decoded.role && { role: decoded.role }),
-              ...(decoded.permissions && { permissions: decoded.permissions }),
-            };
+            // Fall back to minimal token data if database lookup fails
+            const minimalUser = Object.assign(
+              Object.create(Object.getPrototypeOf({})),
+              {
+                id: decoded.id,
+                email: decoded.email,
+                firstName: '',
+                lastName: '',
+                isEmailVerified: true,
+                isActive: true,
+                authProvider: 'email',
+                createdAt: new Date(),
+                updatedAt: new Date(),
+                refreshTokens: [],
+                passwordResets: [],
+                role: decoded.role || 'user',
+                permissions: decoded.permissions || [],
+                password: undefined, // Add password property to match User entity
+                // Add the getter methods manually
+                get fullName() {
+                  return `${this.firstName} ${this.lastName}`.trim();
+                },
+                get isVerified() {
+                  return this.isEmailVerified;
+                },
+                toJSON() {
+                  const { password, ...userWithoutPassword } = this;
+                  return userWithoutPassword;
+                },
+              },
+            );
+
+            req.user = minimalUser;
           }
         }
       } catch (error) {
@@ -251,11 +298,7 @@ export const optionalAuth = async (
 export const requireRole = (requiredRoles: string | string[]) => {
   const roles = Array.isArray(requiredRoles) ? requiredRoles : [requiredRoles];
 
-  return (
-    req: AuthenticatedRequest,
-    res: Response,
-    next: NextFunction,
-  ): void => {
+  return (req: Request, res: Response, next: NextFunction): void => {
     if (!req.user) {
       res.status(401).json({
         error: 'Authentication required',
@@ -286,11 +329,7 @@ export const requirePermission = (requiredPermissions: string | string[]) => {
     ? requiredPermissions
     : [requiredPermissions];
 
-  return (
-    req: AuthenticatedRequest,
-    res: Response,
-    next: NextFunction,
-  ): void => {
+  return (req: Request, res: Response, next: NextFunction): void => {
     if (!req.user) {
       res.status(401).json({
         error: 'Authentication required',
@@ -322,11 +361,7 @@ export const requirePermission = (requiredPermissions: string | string[]) => {
  * Middleware to ensure user can only access their own resources
  */
 export const requireOwnership = (userIdParam: string = 'userId') => {
-  return (
-    req: AuthenticatedRequest,
-    res: Response,
-    next: NextFunction,
-  ): void => {
+  return (req: Request, res: Response, next: NextFunction): void => {
     if (!req.user) {
       res.status(401).json({
         error: 'Authentication required',
@@ -435,7 +470,7 @@ export const securityHeaders = (
  * Middleware to refresh access token if it's about to expire
  */
 export const refreshTokenMiddleware = async (
-  req: AuthenticatedRequest,
+  req: Request,
   res: Response,
   next: NextFunction,
 ): Promise<void> => {

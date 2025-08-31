@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Eye,
   EyeOff,
@@ -12,11 +12,12 @@ import {
   User,
 } from 'lucide-react';
 import { useUserStore } from '../../stores/UserStore';
-import TerminalCard from '../../components/layout/TerminalCard';
-import AuthHeader from '../../components/layout/AuthHeader';
+import TerminalCard from '../../components/ui/TerminalCard';
+import AuthHeader from '../../components/auth/AuthHeader';
 
 const AuthForm: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [showPassword, setShowPassword] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
@@ -26,7 +27,25 @@ const AuthForm: React.FC = () => {
   const [lastName, setLastName] = useState('');
   const [emailError, setEmailError] = useState('');
 
-  const { login, register, isLoading, error, clearError } = useUserStore();
+  const { login, register, isLoading, error, clearError, handleOAuthSuccess } =
+    useUserStore();
+
+  // Handle OAuth success callback
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const token = searchParams.get('token');
+    const oauthError = searchParams.get('error');
+
+    if (token) {
+      // OAuth success - handle the token
+      handleOAuthSuccess(token);
+      navigate('/dashboard');
+    } else if (oauthError) {
+      // OAuth error - display error message
+      console.error('OAuth error:', oauthError);
+      // You might want to set an error state here
+    }
+  }, [location, handleOAuthSuccess, navigate]);
 
   const isValidEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -90,6 +109,11 @@ const AuthForm: React.FC = () => {
     } catch (error) {
       console.error('Authentication failed:', error);
     }
+  };
+
+  const handleOAuthLogin = (provider: 'google' | 'github') => {
+    const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+    window.location.href = `${backendUrl}/api/v1/users/auth/${provider}`;
   };
 
   const toggleMode = () => {
@@ -386,6 +410,7 @@ const AuthForm: React.FC = () => {
             {/* OAuth Buttons */}
             <div className="grid grid-cols-2 gap-3">
               <button
+                onClick={() => handleOAuthLogin('google')}
                 className="btn btn-outline btn-neutral font-mono text-xs"
                 disabled={isLoading}
               >
@@ -393,6 +418,7 @@ const AuthForm: React.FC = () => {
                 GOOGLE
               </button>
               <button
+                onClick={() => handleOAuthLogin('github')}
                 className="btn btn-outline btn-neutral font-mono text-xs"
                 disabled={isLoading}
               >

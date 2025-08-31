@@ -17,8 +17,8 @@ export class User {
   @Column({ type: 'varchar', unique: true })
   email!: string;
 
-  @Column({ type: 'varchar' })
-  password!: string;
+  @Column({ type: 'varchar', nullable: true })
+  password?: string;
 
   @Column({ name: 'first_name', type: 'varchar', nullable: false })
   firstName!: string;
@@ -53,6 +53,15 @@ export class User {
     nullable: true,
   })
   emailVerificationExpires?: Date;
+
+  @Column({ name: 'google_id', type: 'varchar', nullable: true })
+  googleId?: string;
+
+  @Column({ name: 'github_id', type: 'varchar', nullable: true })
+  githubId?: string;
+
+  @Column({ name: 'auth_provider', type: 'varchar', default: 'email' })
+  authProvider!: string;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;

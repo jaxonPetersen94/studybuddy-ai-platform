@@ -10,13 +10,14 @@ import {
   CreateUserData,
   DecodedToken,
   LoginCredentials,
+  OAuthProfile,
   UserProfileUpdateData,
 } from '../types';
 
-const JWT_SECRET = process.env.JWT_SECRET;
-const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET;
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN;
-const REFRESH_TOKEN_EXPIRES_IN = process.env.REFRESH_TOKEN_EXPIRES_IN;
+const JWT_SECRET = process.env.JWT_SECRET!;
+const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET!;
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN!;
+const REFRESH_TOKEN_EXPIRES_IN = process.env.REFRESH_TOKEN_EXPIRES_IN!;
 
 class AuthService {
   private userRepository = AppDataSource.getRepository(User);
@@ -49,6 +50,7 @@ class AuthService {
       password: hashedPassword,
       firstName,
       lastName,
+      authProvider: 'email',
       isEmailVerified: false,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -87,6 +89,13 @@ class AuthService {
       throw new Error('Account has been deactivated');
     }
 
+    // Check if user has a password (OAuth users won't)
+    if (!user.password) {
+      throw new Error(
+        'This account uses OAuth login. Please use Google or GitHub to sign in.',
+      );
+    }
+
     // Verify password
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
@@ -110,6 +119,119 @@ class AuthService {
   }
 
   /**
+   * Find or create user from OAuth profile
+   */
+  async findOrCreateOAuthUser(
+    profile: OAuthProfile,
+    provider: 'google' | 'github',
+  ): Promise<User> {
+    const email = profile.emails?.[0]?.value;
+    if (!email) {
+      throw new Error('No email provided by OAuth provider');
+    }
+
+    // Check if user exists with OAuth provider ID
+    const providerIdField = provider === 'google' ? 'googleId' : 'githubId';
+    let user = await this.userRepository.findOne({
+      where: { [providerIdField]: profile.id },
+    });
+
+    if (user) {
+      // Update last login
+      user.lastLoginAt = new Date();
+      await this.userRepository.save(user);
+      return user;
+    }
+
+    // Check if user exists with same email (account linking)
+    user = await this.userRepository.findOne({ where: { email } });
+
+    if (user) {
+      // Link OAuth account to existing user
+      (user as any)[providerIdField] = profile.id;
+      user.authProvider = provider;
+      user.lastLoginAt = new Date();
+      user.updatedAt = new Date();
+      await this.userRepository.save(user);
+      return user;
+    }
+
+    // Create new OAuth user
+    const newUser = this.userRepository.create({
+      email,
+      [providerIdField]: profile.id,
+      firstName:
+        profile.name?.firstName || profile.displayName?.split(' ')[0] || '',
+      lastName:
+        profile.name?.lastName ||
+        profile.displayName?.split(' ').slice(1).join(' ') ||
+        '',
+      authProvider: provider,
+      isEmailVerified: true, // OAuth emails are pre-verified
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      lastLoginAt: new Date(),
+    });
+
+    return await this.userRepository.save(newUser);
+  }
+
+  /**
+   * Handle complete OAuth flow
+   */
+  async handleOAuthLogin(
+    profile: OAuthProfile,
+    provider: 'google' | 'github',
+  ): Promise<{ user: User; tokens: AuthTokens }> {
+    const user = await this.findOrCreateOAuthUser(profile, provider);
+
+    if (!user.isActive) {
+      throw new Error('Account has been deactivated');
+    }
+
+    const tokens = await this.generateTokens(user);
+    const { password: _, ...userWithoutPassword } = user;
+
+    return {
+      user: userWithoutPassword as User,
+      tokens,
+    };
+  }
+
+  /**
+   * Handle OAuth success and generate response (public method)
+   */
+  async handleOAuthSuccess(
+    userId: string,
+  ): Promise<{ user: User; tokens: AuthTokens }> {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    if (!user.isActive) {
+      throw new Error('Account has been deactivated');
+    }
+
+    // Update last login
+    user.lastLoginAt = new Date();
+    await this.userRepository.save(user);
+
+    // Generate tokens using private method
+    const tokens = await this.generateTokens(user);
+
+    // Remove password from response
+    const { password: _, ...userWithoutPassword } = user;
+
+    return {
+      user: userWithoutPassword as User,
+      tokens,
+    };
+  }
+
+  /**
    * Verify user's password
    */
   async verifyUserPassword(userId: string, password: string): Promise<boolean> {
@@ -117,6 +239,12 @@ class AuthService {
     if (!user) {
       throw new Error('User not found');
     }
+
+    // Check if user has a password (OAuth users won't)
+    if (!user.password) {
+      throw new Error('User does not have a password (OAuth account)');
+    }
+
     return bcrypt.compare(password, user.password);
   }
 
@@ -187,6 +315,11 @@ class AuthService {
       throw new Error('User not found');
     }
 
+    // Check if user has a password (OAuth users can't reset passwords)
+    if (!user.password) {
+      throw new Error('Cannot reset password for OAuth account');
+    }
+
     // Generate secure random token
     const resetToken = crypto.randomBytes(32).toString('hex');
     const expiresAt = new Date();
@@ -221,6 +354,14 @@ class AuthService {
       throw new Error('Invalid or expired reset token');
     }
 
+    // Ensure user can have their password reset (not OAuth)
+    if (
+      !passwordReset.user.password &&
+      passwordReset.user.authProvider !== 'email'
+    ) {
+      throw new Error('Cannot reset password for OAuth account');
+    }
+
     // Hash new password
     const saltRounds = 12;
     const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
@@ -248,6 +389,11 @@ class AuthService {
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) {
       throw new Error('User not found');
+    }
+
+    // Check if user has a password (OAuth users won't)
+    if (!user.password) {
+      throw new Error('Cannot change password for OAuth account');
     }
 
     // Verify current password

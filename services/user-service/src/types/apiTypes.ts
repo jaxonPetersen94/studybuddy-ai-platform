@@ -1,4 +1,5 @@
 import { User } from '../entities/User';
+import { AuthTokens } from './authTypes';
 
 export interface ApiError {
   error: string;
@@ -13,32 +14,14 @@ export interface ApiSuccessResponse<T = any> {
 export interface AuthResponse {
   message: string;
   user: User;
-  tokens: {
-    accessToken: string;
-    refreshToken: string;
-    expiresIn: string;
-  };
+  tokens: AuthTokens;
 }
 
 export interface TokenRefreshResponse {
   message: string;
-  tokens: {
-    accessToken: string;
-    refreshToken: string;
-    expiresIn: string;
-  };
+  tokens: AuthTokens;
 }
 
-export interface ProfileResponse {
-  user: User;
-}
-
-export interface ProfileUpdateResponse {
-  message: string;
-  user: User;
-}
-
-// Error codes enum for better type safety
 export enum AuthErrorCodes {
   MISSING_FIELDS = 'MISSING_FIELDS',
   INVALID_EMAIL = 'INVALID_EMAIL',

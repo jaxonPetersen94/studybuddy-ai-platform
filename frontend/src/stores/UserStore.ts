@@ -23,6 +23,7 @@ interface UserStore {
   register: (data: RegisterData) => Promise<void>;
   logout: () => Promise<void>;
   refreshAuth: () => Promise<void>;
+  handleOAuthSuccess: (accessToken: string) => Promise<void>;
 
   // Profile management actions
   updateProfile: (data: Partial<User>) => Promise<void>;
@@ -152,6 +153,53 @@ export const useUserStore = create<UserStore>()(
           }
         } catch (error) {
           await get().logout();
+        }
+      },
+
+      // Handle OAuth success callback
+      handleOAuthSuccess: async (accessToken: string) => {
+        set({ isLoading: true, error: null });
+
+        try {
+          // Get user profile using the OAuth access token
+          const user = await authService.getCurrentUser(accessToken);
+
+          // Create token structure - for OAuth, we only have access token initially
+          // The backend should provide refresh token through a different endpoint if needed
+          const tokens: AuthTokens = {
+            accessToken,
+            refreshToken: '',
+            expiresAt: Date.now() + 60 * 60 * 1000, // 1 hour from now
+          };
+
+          set({
+            user,
+            tokens,
+            isAuthenticated: true,
+            isLoading: false,
+          });
+
+          // Optionally, try to get refresh token through a separate API call
+          // This depends on your backend implementation
+          try {
+            const refreshResponse = await authService.refreshToken(accessToken);
+            const updatedTokens = tokenUtils.createTokens(
+              refreshResponse.accessToken,
+              refreshResponse.refreshToken,
+              refreshResponse.expiresIn,
+            );
+            set({ tokens: updatedTokens });
+          } catch (refreshError) {
+            // If refresh token exchange fails, continue with access token only
+            console.warn('Could not exchange for refresh token:', refreshError);
+          }
+        } catch (error: any) {
+          const errorMessage = error.message || 'OAuth authentication failed';
+          set({
+            error: errorMessage,
+            isLoading: false,
+          });
+          throw error;
         }
       },
 

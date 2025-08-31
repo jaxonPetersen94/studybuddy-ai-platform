@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, CheckCircle } from 'lucide-react';
-import TerminalCard from '../../components/layout/TerminalCard';
+import TerminalCard from '../../components/ui/TerminalCard';
 import { authService } from '../../services/authService';
-import AuthHeader from '../../components/layout/AuthHeader';
+import AuthHeader from '../../components/auth/AuthHeader';
 
 const ResetPassword: React.FC = () => {
   const navigate = useNavigate();

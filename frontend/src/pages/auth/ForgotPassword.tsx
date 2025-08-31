@@ -1,9 +1,9 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mail, ArrowLeft, Zap, CheckCircle, RefreshCw } from 'lucide-react';
-import TerminalCard from '../../components/layout/TerminalCard';
+import TerminalCard from '../../components/ui/TerminalCard';
 import { authService } from '../../services/authService';
-import AuthHeader from '../../components/layout/AuthHeader';
+import AuthHeader from '../../components/auth/AuthHeader';
 
 const ForgotPassword: React.FC = () => {
   const navigate = useNavigate();
@@ -21,9 +21,7 @@ const ForgotPassword: React.FC = () => {
     try {
       await authService.forgotPassword({ email });
       setEmailSent(true);
-      console.log('Password reset email sent to:', email);
     } catch (err: any) {
-      console.error('Forgot password failed:', err);
       setError(err.message || 'Failed to send reset email. Please try again.');
     } finally {
       setLoading(false);
