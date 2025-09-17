@@ -50,7 +50,7 @@ const NewChat: React.FC = () => {
   const [message, setMessage] = useState('');
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
   const [isTyping, setIsTyping] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Mock chat sessions for sidebar
   const chatSessions: ChatSession[] = [

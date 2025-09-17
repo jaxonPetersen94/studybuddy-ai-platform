@@ -2,32 +2,6 @@
 
 An intelligent learning assistant platform that helps students learn more effectively through AI-powered study tools and personalized learning experiences.
 
-## 🌟 Features
-
-### Current Features
-
-- **Modern Frontend Interface**: Built with React 19, Vite, and Tailwind CSS 4
-- **Component Library**: DaisyUI components with Lucide React icons
-- **State Management**: Zustand for efficient state handling
-- **Microservices Architecture**: Scalable backend with Express.js 5
-- **API Gateway**: Centralized routing with security middleware (Helmet, CORS, Rate Limiting)
-- **User Management**: Complete authentication system with JWT and bcryptjs
-- **Database Integration**: TypeORM with PostgreSQL and migration support
-- **Email Services**: Nodemailer integration for user communications
-- **Production Ready**: Full Docker containerization with health checks
-- **Development Tools**: Hot reload, database management interfaces
-
-### Planned Features
-
-- **Document Upload & Processing**: Upload PDFs and documents for AI analysis
-- **AI-Powered Study Tools**:
-  - Automated study guide generation
-  - Interactive flashcard creation
-  - Practice quiz generation
-- **Intelligent Chat Assistant**: Ask questions about your study materials
-- **Progress Tracking**: Monitor learning progress and analytics
-- **Real-time Features**: Live updates and notifications
-
 ## 🏗️ Architecture
 
 ```
@@ -63,7 +37,7 @@ studybuddy-ai-platform/
 - React Router DOM for navigation
 - Zustand for state management
 - Tailwind CSS 4 + DaisyUI for styling
-- Lucide React for icons
+- Lucide React for comprehensive icon library
 - Testing Library suite for testing
 
 **Backend Services**
@@ -113,7 +87,7 @@ docker-compose up -d
 
 This will start:
 
-- Frontend at `http://localhost:3000`
+- Frontend at `http://localhost:3000` (Main StudyBuddy interface)
 - API Gateway at `http://localhost:3001`
 - User Service at `http://localhost:5001`
 - PostgreSQL database with health checks
@@ -157,11 +131,14 @@ This will start:
    ```
 
 5. **Start the Frontend**
+
    ```bash
    cd frontend
    npm install
    npm run dev
    ```
+
+   The main application will be available at `http://localhost:3000` with the NewChat interface as the landing page.
 
 ### Environment Setup
 
@@ -178,7 +155,7 @@ VITE_API_URL=http://localhost:3001
 ```
 PORT=3001
 JWT_SECRET=your-jwt-secret
-CORS_ORIGIN=http://localhost:5173
+CORS_ORIGIN=http://localhost:3000
 RATE_LIMIT_WINDOW_MS=900000
 RATE_LIMIT_MAX_REQUESTS=100
 ```
@@ -207,6 +184,16 @@ The project includes development database management tools:
   - Password: `admin123`
 
 ## 🔧 Development
+
+### User Interface Features
+
+The NewChat component serves as the main interaction hub:
+
+- **Subject Selection**: Click on programming, math, science, languages, writing, or business cards to focus your learning session
+- **Quick Actions**: Use pre-built prompts for common learning tasks like explanations, quizzes, and study guides
+- **Multi-Modal Input**: Support for text, file uploads, voice input, and camera integration
+- **Chat History**: Access previous learning sessions through the sidebar with timestamps and starred conversations
+- **Responsive Design**: Optimized for desktop and mobile learning experiences
 
 ### Deployment Modes
 
@@ -278,48 +265,50 @@ npm run migration:run
 
 - [x] Basic project structure
 - [x] Frontend setup with React + TypeScript
+- [x] Interactive NewChat landing page with subject selection
+- [x] Quick action prompts for learning tasks
+- [x] Chat interface with multi-modal input support
+- [x] Sidebar with chat history management
 - [x] API Gateway implementation
 - [x] User service with authentication
 - [x] Database setup with Docker
 
-### Phase 2: Document Processing 🚧
+### Phase 2: AI Integration 🚧
 
-- [ ] File upload functionality
-- [ ] PDF processing service
-- [ ] Document storage and retrieval
-- [ ] Content extraction and parsing
+- [ ] OpenAI API integration for chat responses
+- [ ] Real-time AI processing for study materials
+- [ ] Context-aware responses based on selected subjects
+- [ ] File upload processing for documents and images
+- [ ] Voice input transcription and processing
 
-### Phase 3: AI Integration 📅
+### Phase 3: Enhanced Learning Tools 📅
 
-- [ ] OpenAI API integration
-- [ ] Study guide generation
-- [ ] Flashcard creation
-- [ ] Practice quiz generation
-- [ ] AI chat assistant
+- [ ] Advanced study guide generation with structured content
+- [ ] Interactive flashcard system with spaced repetition
+- [ ] Adaptive quiz generation based on performance
+- [ ] Progress tracking and learning analytics
+- [ ] Personalized learning path recommendations
 
 ### Phase 4: Advanced Features 📅
 
-- [ ] Progress tracking and analytics
-- [ ] Real-time notifications
-- [ ] Collaborative study features
-- [ ] Mobile responsiveness
-- [ ] Performance optimization
+- [ ] Collaborative study sessions and group features
+- [ ] Mobile app with offline capabilities
+- [ ] Advanced document processing and content extraction
+- [ ] Real-time notifications and reminders
+- [ ] Performance optimization and caching
 
 ## 🎯 Project Goals
 
 This project demonstrates:
 
-- **Full-Stack Development**: Modern React frontend with microservices backend
+- **Modern Learning Interface**: Intuitive subject-based navigation with AI-powered quick actions
+- **Full-Stack Development**: React frontend with comprehensive backend microservices
 - **Production-Ready Architecture**: Complete Docker containerization with health checks
 - **Microservices Design**: Proper service separation with API Gateway pattern
+- **Educational Technology**: Practical application of AI for personalized learning experiences
+- **User Experience Focus**: Multi-modal input support and responsive design
 - **Database Architecture**: Multi-database setup with service isolation
-- **DevOps Best Practices**: Development and production environments, dependency management
-- **AI Integration**: Practical application of LLM APIs for educational tools (planned)
+- **DevOps Best Practices**: Development and production environments with dependency management
 - **Scalable Infrastructure**: Container orchestration ready for cloud deployment
-- **Modern Tech Stack**: Latest versions of React, Node.js, TypeScript, and databases
 - **Security Implementation**: JWT auth, rate limiting, CORS, and security headers
 - **Real-World Application**: Solving actual problems in educational technology
-
----
-
-Built with ❤️ for better learning experiences
