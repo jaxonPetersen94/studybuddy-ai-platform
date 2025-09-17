@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { X, CheckCircle, AlertCircle, AlertTriangle, Info } from 'lucide-react';
+import { CheckCircle, AlertCircle, AlertTriangle, Info } from 'lucide-react';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
 
@@ -106,11 +106,13 @@ const Toast: React.FC<ToastProps> = ({
 
   return (
     <div
+      onClick={handleClose}
       className={`
         ${getAnimationClasses()}
         w-80 max-w-sm mb-3
         bg-base-100 border border-base-300/50 ${config.borderColor}
-        border-l-4 rounded-box shadow-lg p-4 group relative
+        border-l-4 rounded-box shadow-lg p-4 hover:shadow-xl transition-shadow
+        cursor-default select-none
       `}
     >
       <div className="flex items-start space-x-3">
@@ -128,17 +130,8 @@ const Toast: React.FC<ToastProps> = ({
             {message}
           </div>
         </div>
-
-        <button
-          onClick={handleClose}
-          className="opacity-0 group-hover:opacity-100 transition-opacity btn btn-ghost btn-xs p-1 flex-shrink-0"
-          aria-label="Close notification"
-        >
-          <X className="w-3 h-3" />
-        </button>
       </div>
 
-      {/* Progress Bar using Tailwind animations */}
       {duration > 0 && (
         <div className="mt-3 -mx-4 -mb-4">
           <div className="h-1 bg-base-200/50 rounded-b-box overflow-hidden">

@@ -8,7 +8,7 @@ import { useOAuthHandler } from './hooks/useOAuthHandler';
 import AuthForm from './pages/auth/AuthForm';
 import ForgotPassword from './pages/auth/ForgotPassword';
 import ResetPassword from './pages/auth/ResetPassword';
-import Dashboard from './pages/dashboard/Dashboard';
+import NewChat from './pages/chat/NewChat';
 import UserSettings from './pages/user/UserSettings';
 import { useUserStore } from './stores/UserStore';
 import { useToastStore } from './stores/ToastStore';
@@ -20,7 +20,7 @@ const HomeRoute = () => {
   useOAuthHandler();
 
   return isAuthenticated ? (
-    <Navigate to="/dashboard" replace />
+    <Navigate to="/new" replace />
   ) : (
     <Navigate to="/auth" replace />
   );
@@ -36,7 +36,7 @@ function App() {
 
       {/* Header */}
       {isAuthenticated && (
-        <div className="relative z-50 p-6 pb-0">
+        <div className="relative z-50">
           <Header />
         </div>
       )}
@@ -51,14 +51,18 @@ function App() {
           {/* Password reset route (not protected) */}
           <Route path="/reset-password/:token" element={<ResetPassword />} />
 
+          {/* Changed from /dashboard to /new */}
           <Route
-            path="/dashboard"
+            path="/new"
             element={
               <ProtectedRoute>
-                <Dashboard />
+                <NewChat />
               </ProtectedRoute>
             }
           />
+
+          {/* Keep /dashboard route for backward compatibility (optional) */}
+          <Route path="/dashboard" element={<Navigate to="/new" replace />} />
 
           <Route
             path="/user-settings"
