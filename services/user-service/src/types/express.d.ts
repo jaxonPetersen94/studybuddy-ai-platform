@@ -1,10 +1,7 @@
-import { Request } from 'express';
+import { User as UserEntity } from '../entities/User';
 
-declare module 'express-serve-static-core' {
-  interface Request {
-    user?: {
-      id: string;
-      email: string;
-    };
+declare global {
+  namespace Express {
+    interface User extends UserEntity {}
   }
 }

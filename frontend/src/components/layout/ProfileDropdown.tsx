@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, Settings, LogOut, ChevronDown } from 'lucide-react';
-import { useUserStore } from '../../../stores/UserStore';
+import { useUserStore } from '../../stores/UserStore';
 
 interface ProfileDropdownProps {
   className?: string;

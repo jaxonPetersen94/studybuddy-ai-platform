@@ -10,13 +10,15 @@ import {
   CreateUserData,
   DecodedToken,
   LoginCredentials,
+  OAuthProfile,
   UserProfileUpdateData,
+  AuthErrorCodes,
 } from '../types';
 
-const JWT_SECRET = process.env.JWT_SECRET;
-const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET;
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN;
-const REFRESH_TOKEN_EXPIRES_IN = process.env.REFRESH_TOKEN_EXPIRES_IN;
+const JWT_SECRET = process.env.JWT_SECRET!;
+const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET!;
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN!;
+const REFRESH_TOKEN_EXPIRES_IN = process.env.REFRESH_TOKEN_EXPIRES_IN!;
 
 class AuthService {
   private userRepository = AppDataSource.getRepository(User);
@@ -28,15 +30,19 @@ class AuthService {
    */
   async registerUser(
     userData: CreateUserData,
-  ): Promise<{ user: User; tokens: AuthTokens }> {
+  ): Promise<{ user: User; tokens: AuthTokens; isNewUser: boolean }> {
     const { email, password, firstName, lastName } = userData;
 
     // Check if user already exists
     const existingUser = await this.userRepository.findOne({
       where: { email },
     });
+
     if (existingUser) {
-      throw new Error('User with this email already exists');
+      const error = new Error('User with this email already exists') as any;
+      error.code = AuthErrorCodes.EMAIL_EXISTS;
+      error.statusCode = 409;
+      throw error;
     }
 
     // Hash password
@@ -49,12 +55,21 @@ class AuthService {
       password: hashedPassword,
       firstName,
       lastName,
-      isEmailVerified: false,
+      authProvider: 'email',
+      firstLogin: true,
       createdAt: new Date(),
       updatedAt: new Date(),
     });
 
     const savedUser = await this.userRepository.save(user);
+
+    // Registration is always for new users
+    const isNewUser = true;
+
+    // Mark first login as complete since registration automatically logs them in
+    savedUser.firstLogin = false;
+    savedUser.lastLoginAt = new Date();
+    await this.userRepository.save(savedUser);
 
     // Generate tokens
     const tokens = await this.generateTokens(savedUser);
@@ -65,6 +80,7 @@ class AuthService {
     return {
       user: userWithoutPassword as User,
       tokens,
+      isNewUser,
     };
   }
 
@@ -73,34 +89,184 @@ class AuthService {
    */
   async loginUser(
     credentials: LoginCredentials,
-  ): Promise<{ user: User; tokens: AuthTokens }> {
+  ): Promise<{ user: User; tokens: AuthTokens; isNewUser: boolean }> {
     const { email, password } = credentials;
 
     // Find user by email
     const user = await this.userRepository.findOne({ where: { email } });
     if (!user) {
-      throw new Error('Invalid credentials');
+      const error = new Error('Invalid credentials') as any;
+      error.code = AuthErrorCodes.INVALID_CREDENTIALS;
+      error.statusCode = 401;
+      throw error;
     }
 
     // Check if account is active
     if (!user.isActive) {
-      throw new Error('Account has been deactivated');
+      const error = new Error('Account has been deactivated') as any;
+      error.code = AuthErrorCodes.ACCOUNT_DEACTIVATED;
+      error.statusCode = 403;
+      throw error;
+    }
+
+    // Check if user has a password (OAuth users won't)
+    if (!user.password) {
+      const error = new Error(
+        'This account uses OAuth login. Please use Google or GitHub to sign in.',
+      ) as any;
+      error.code = AuthErrorCodes.INVALID_CREDENTIALS;
+      error.statusCode = 401;
+      throw error;
     }
 
     // Verify password
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
-      throw new Error('Invalid credentials');
+      const error = new Error('Invalid credentials') as any;
+      error.code = AuthErrorCodes.INVALID_CREDENTIALS;
+      error.statusCode = 401;
+      throw error;
     }
 
-    // Update last login
+    // Check if this is the user's first login
+    const isNewUser = user.firstLogin;
+
+    // Update last login and mark first login as complete
     user.lastLoginAt = new Date();
+    if (user.firstLogin) {
+      user.firstLogin = false;
+    }
     await this.userRepository.save(user);
 
     // Generate tokens
     const tokens = await this.generateTokens(user);
 
     // Remove password from response
+    const { password: _, ...userWithoutPassword } = user;
+
+    return {
+      user: userWithoutPassword as User,
+      tokens,
+      isNewUser,
+    };
+  }
+
+  /**
+   * Find or create user from OAuth profile
+   */
+  async findOrCreateUserFromOAuth(
+    profile: OAuthProfile,
+    provider: 'google' | 'github',
+  ): Promise<User> {
+    const email = profile.emails?.[0]?.value;
+    if (!email) {
+      const error = new Error('No email provided by OAuth provider') as any;
+      error.code = AuthErrorCodes.MISSING_EMAIL;
+      error.statusCode = 400;
+      throw error;
+    }
+
+    // Check if user exists with OAuth provider ID
+    const providerIdField = provider === 'google' ? 'googleId' : 'githubId';
+    let user = await this.userRepository.findOne({
+      where: { [providerIdField]: profile.id },
+    });
+
+    if (user) {
+      // Update last login
+      user.lastLoginAt = new Date();
+      await this.userRepository.save(user);
+      return user;
+    }
+
+    // Check if user exists with same email (account linking)
+    user = await this.userRepository.findOne({ where: { email } });
+
+    if (user) {
+      // Link OAuth account to existing user
+      (user as any)[providerIdField] = profile.id;
+      user.authProvider = provider;
+      user.lastLoginAt = new Date();
+      user.updatedAt = new Date();
+      await this.userRepository.save(user);
+      return user;
+    }
+
+    // Create new OAuth user
+    const newUser = this.userRepository.create({
+      email,
+      [providerIdField]: profile.id,
+      firstName:
+        profile.name?.firstName || profile.displayName?.split(' ')[0] || '',
+      lastName:
+        profile.name?.lastName ||
+        profile.displayName?.split(' ').slice(1).join(' ') ||
+        '',
+      authProvider: provider,
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      lastLoginAt: new Date(),
+    });
+
+    return await this.userRepository.save(newUser);
+  }
+
+  /**
+   * Handle complete OAuth flow
+   */
+  async authenticateWithOAuth(
+    profile: OAuthProfile,
+    provider: 'google' | 'github',
+  ): Promise<{ user: User; tokens: AuthTokens }> {
+    const user = await this.findOrCreateUserFromOAuth(profile, provider);
+
+    if (!user.isActive) {
+      const error = new Error('Account has been deactivated') as any;
+      error.code = AuthErrorCodes.ACCOUNT_DEACTIVATED;
+      error.statusCode = 403;
+      throw error;
+    }
+
+    const tokens = await this.generateTokens(user);
+    const { password: _, ...userWithoutPassword } = user;
+
+    return {
+      user: userWithoutPassword as User,
+      tokens,
+    };
+  }
+
+  /**
+   * Handle OAuth success and generate response (public method)
+   */
+  async completeOAuthAuthentication(
+    userId: string,
+  ): Promise<{ user: User; tokens: AuthTokens }> {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+
+    if (!user) {
+      const error = new Error('User not found') as any;
+      error.code = AuthErrorCodes.USER_NOT_FOUND;
+      error.statusCode = 404;
+      throw error;
+    }
+
+    if (!user.isActive) {
+      const error = new Error('Account has been deactivated') as any;
+      error.code = AuthErrorCodes.ACCOUNT_DEACTIVATED;
+      error.statusCode = 403;
+      throw error;
+    }
+
+    const isNewUser = user.firstLogin;
+
+    user.lastLoginAt = new Date();
+    user.firstLogin = false;
+
+    await this.userRepository.save(user);
+
+    const tokens = await this.generateTokens(user, { isFirstLogin: isNewUser });
     const { password: _, ...userWithoutPassword } = user;
 
     return {
@@ -115,8 +281,22 @@ class AuthService {
   async verifyUserPassword(userId: string, password: string): Promise<boolean> {
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) {
-      throw new Error('User not found');
+      const error = new Error('User not found') as any;
+      error.code = AuthErrorCodes.USER_NOT_FOUND;
+      error.statusCode = 404;
+      throw error;
     }
+
+    // Check if user has a password (OAuth users won't)
+    if (!user.password) {
+      const error = new Error(
+        'User does not have a password (OAuth account)',
+      ) as any;
+      error.code = AuthErrorCodes.PASSWORD_REQUIRED;
+      error.statusCode = 400;
+      throw error;
+    }
+
     return bcrypt.compare(password, user.password);
   }
 
@@ -138,12 +318,18 @@ class AuthService {
       });
 
       if (!storedToken || storedToken.expiresAt < new Date()) {
-        throw new Error('Invalid refresh token');
+        const error = new Error('Invalid refresh token') as any;
+        error.code = AuthErrorCodes.INVALID_REFRESH_TOKEN;
+        error.statusCode = 401;
+        throw error;
       }
 
       // Check if user still exists and is active
       if (!storedToken.user.isActive) {
-        throw new Error('User account is deactivated');
+        const error = new Error('User account is deactivated') as any;
+        error.code = AuthErrorCodes.ACCOUNT_DEACTIVATED;
+        error.statusCode = 403;
+        throw error;
       }
 
       // Generate new tokens
@@ -153,8 +339,14 @@ class AuthService {
       await this.refreshTokenRepository.remove(storedToken);
 
       return tokens;
-    } catch (error) {
-      throw new Error('Invalid refresh token');
+    } catch (error: any) {
+      if (error.code) {
+        throw error;
+      }
+      const newError = new Error('Invalid refresh token') as any;
+      newError.code = AuthErrorCodes.INVALID_REFRESH_TOKEN;
+      newError.statusCode = 401;
+      throw newError;
     }
   }
 
@@ -184,7 +376,18 @@ class AuthService {
   async generatePasswordResetToken(email: string): Promise<string> {
     const user = await this.userRepository.findOne({ where: { email } });
     if (!user) {
-      throw new Error('User not found');
+      const error = new Error('User not found') as any;
+      error.code = AuthErrorCodes.USER_NOT_FOUND;
+      error.statusCode = 404;
+      throw error;
+    }
+
+    // Check if user has a password (OAuth users can't reset passwords)
+    if (!user.password) {
+      const error = new Error('Cannot reset password for OAuth account') as any;
+      error.code = AuthErrorCodes.PASSWORD_REQUIRED;
+      error.statusCode = 400;
+      throw error;
     }
 
     // Generate secure random token
@@ -218,7 +421,21 @@ class AuthService {
     });
 
     if (!passwordReset || passwordReset.expiresAt < new Date()) {
-      throw new Error('Invalid or expired reset token');
+      const error = new Error('Invalid or expired reset token') as any;
+      error.code = AuthErrorCodes.INVALID_RESET_TOKEN;
+      error.statusCode = 400;
+      throw error;
+    }
+
+    // Ensure user can have their password reset (not OAuth)
+    if (
+      !passwordReset.user.password &&
+      passwordReset.user.authProvider !== 'email'
+    ) {
+      const error = new Error('Cannot reset password for OAuth account') as any;
+      error.code = AuthErrorCodes.PASSWORD_REQUIRED;
+      error.statusCode = 400;
+      throw error;
     }
 
     // Hash new password
@@ -247,7 +464,20 @@ class AuthService {
   ): Promise<void> {
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) {
-      throw new Error('User not found');
+      const error = new Error('User not found') as any;
+      error.code = AuthErrorCodes.USER_NOT_FOUND;
+      error.statusCode = 404;
+      throw error;
+    }
+
+    // Check if user has a password (OAuth users won't)
+    if (!user.password) {
+      const error = new Error(
+        'Cannot change password for OAuth account',
+      ) as any;
+      error.code = AuthErrorCodes.PASSWORD_REQUIRED;
+      error.statusCode = 400;
+      throw error;
     }
 
     // Verify current password
@@ -256,7 +486,10 @@ class AuthService {
       user.password,
     );
     if (!isCurrentPasswordValid) {
-      throw new Error('Current password is incorrect');
+      const error = new Error('Current password is incorrect') as any;
+      error.code = AuthErrorCodes.INVALID_CURRENT_PASSWORD;
+      error.statusCode = 400;
+      throw error;
     }
 
     // Hash new password
@@ -285,7 +518,10 @@ class AuthService {
   async getUserProfile(userId: string): Promise<User> {
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) {
-      throw new Error('User not found');
+      const error = new Error('User not found') as any;
+      error.code = AuthErrorCodes.USER_NOT_FOUND;
+      error.statusCode = 404;
+      throw error;
     }
 
     const { password: _, ...userWithoutPassword } = user;
@@ -301,7 +537,10 @@ class AuthService {
   ): Promise<User> {
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) {
-      throw new Error('User not found');
+      const error = new Error('User not found') as any;
+      error.code = AuthErrorCodes.USER_NOT_FOUND;
+      error.statusCode = 404;
+      throw error;
     }
 
     // Only update allowed fields
@@ -320,7 +559,10 @@ class AuthService {
   async deactivateAccount(userId: string): Promise<void> {
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) {
-      throw new Error('User not found');
+      const error = new Error('User not found') as any;
+      error.code = AuthErrorCodes.USER_NOT_FOUND;
+      error.statusCode = 404;
+      throw error;
     }
 
     user.isActive = false;
@@ -343,37 +585,48 @@ class AuthService {
         where: { id: decoded.id },
       });
       if (!user || !user.isActive) {
-        throw new Error('Invalid token');
+        const error = new Error('Invalid token') as any;
+        error.code = AuthErrorCodes.UNAUTHORIZED;
+        error.statusCode = 401;
+        throw error;
       }
 
       return decoded;
-    } catch (error) {
-      throw new Error('Invalid token');
+    } catch (error: any) {
+      if (error.code) {
+        throw error;
+      }
+      const newError = new Error('Invalid token') as any;
+      newError.code = AuthErrorCodes.UNAUTHORIZED;
+      newError.statusCode = 401;
+      throw newError;
     }
   }
 
   /**
    * Generate access and refresh tokens
    */
-  private async generateTokens(user: User): Promise<AuthTokens> {
+  private async generateTokens(
+    user: User,
+    additionalClaims?: any,
+  ): Promise<AuthTokens> {
     const payload = {
       id: user.id,
       email: user.email,
+      ...additionalClaims,
     };
 
-    // Generate access token with explicit typing
     const accessToken = jwt.sign(payload, JWT_SECRET, {
       expiresIn: JWT_EXPIRES_IN,
     } as jwt.SignOptions);
 
-    // Generate refresh token with explicit typing
     const refreshToken = jwt.sign(payload, REFRESH_TOKEN_SECRET, {
       expiresIn: REFRESH_TOKEN_EXPIRES_IN,
     } as jwt.SignOptions);
 
     // Store refresh token in database
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7); // 7 days
+    expiresAt.setDate(expiresAt.getDate() + 7);
 
     const refreshTokenEntity = this.refreshTokenRepository.create({
       userId: user.id,
@@ -384,11 +637,50 @@ class AuthService {
 
     await this.refreshTokenRepository.save(refreshTokenEntity);
 
+    // Convert duration string to seconds
+    const expiresInSeconds = this.parseJwtDurationToSeconds(JWT_EXPIRES_IN);
+
     return {
       accessToken,
       refreshToken,
-      expiresIn: JWT_EXPIRES_IN,
+      expiresIn: expiresInSeconds, // Now returns number of seconds
     };
+  }
+
+  /**
+   * Convert JWT duration string to seconds
+   */
+  private parseJwtDurationToSeconds(duration: string): number {
+    const match = duration.match(/^(\d+)([dhms])$/);
+    if (!match) {
+      throw new Error(`Invalid JWT duration format: ${duration}`);
+    }
+
+    const [, value, unit] = match;
+
+    // Type guard: value and unit are guaranteed to exist due to the regex match above
+    if (!value || !unit) {
+      throw new Error(`Invalid JWT duration format: ${duration}`);
+    }
+
+    const num = parseInt(value, 10);
+
+    if (isNaN(num)) {
+      throw new Error(`Invalid numeric value in duration: ${value}`);
+    }
+
+    switch (unit) {
+      case 'd':
+        return num * 24 * 60 * 60;
+      case 'h':
+        return num * 60 * 60;
+      case 'm':
+        return num * 60;
+      case 's':
+        return num;
+      default:
+        throw new Error(`Unsupported duration unit: ${unit}`);
+    }
   }
 
   /**

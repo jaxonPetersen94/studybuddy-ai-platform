@@ -1,9 +1,9 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mail, ArrowLeft, Zap, CheckCircle, RefreshCw } from 'lucide-react';
-import TerminalCard from '../../components/layout/TerminalCard';
+import TerminalCard from '../../components/ui/TerminalCard';
 import { authService } from '../../services/authService';
-import AuthHeader from '../../components/layout/AuthHeader';
+import AuthHeader from '../../components/auth/AuthHeader';
 
 const ForgotPassword: React.FC = () => {
   const navigate = useNavigate();
@@ -21,9 +21,7 @@ const ForgotPassword: React.FC = () => {
     try {
       await authService.forgotPassword({ email });
       setEmailSent(true);
-      console.log('Password reset email sent to:', email);
     } catch (err: any) {
-      console.error('Forgot password failed:', err);
       setError(err.message || 'Failed to send reset email. Please try again.');
     } finally {
       setLoading(false);
@@ -60,8 +58,8 @@ const ForgotPassword: React.FC = () => {
     }, 1000);
   };
 
-  const handleBackToLogin = () => {
-    navigate('/login');
+  const handleBackToAuth = () => {
+    navigate('/auth');
   };
 
   const resetForm = () => {
@@ -148,7 +146,7 @@ const ForgotPassword: React.FC = () => {
 
                 {/* Back to Login */}
                 <button
-                  onClick={handleBackToLogin}
+                  onClick={handleBackToAuth}
                   className="btn btn-ghost w-full font-mono text-sm uppercase tracking-wide text-base-content/60 hover:text-base-content"
                 >
                   <ArrowLeft className="h-4 w-4" />
@@ -217,7 +215,7 @@ const ForgotPassword: React.FC = () => {
 
                   {/* Back to Login */}
                   <button
-                    onClick={handleBackToLogin}
+                    onClick={handleBackToAuth}
                     className="btn btn-ghost w-full font-mono text-sm uppercase tracking-wide text-base-content/60 hover:text-base-content"
                   >
                     <ArrowLeft className="h-4 w-4" />

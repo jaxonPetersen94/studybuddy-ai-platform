@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, CheckCircle } from 'lucide-react';
-import TerminalCard from '../../components/layout/TerminalCard';
+import TerminalCard from '../../components/ui/TerminalCard';
 import { authService } from '../../services/authService';
-import AuthHeader from '../../components/layout/AuthHeader';
+import AuthHeader from '../../components/auth/AuthHeader';
 
 const ResetPassword: React.FC = () => {
   const navigate = useNavigate();
@@ -42,7 +42,7 @@ const ResetPassword: React.FC = () => {
     }
   };
 
-  const handleBackToLogin = () => navigate('/login');
+  const handleBackToAuth = () => navigate('/auth');
 
   return (
     <div className="min-h-screen relative overflow-hidden">
@@ -111,7 +111,7 @@ const ResetPassword: React.FC = () => {
 
                 {/* Back to Login */}
                 <button
-                  onClick={handleBackToLogin}
+                  onClick={handleBackToAuth}
                   className="btn btn-ghost w-full font-mono text-sm uppercase tracking-wide text-base-content/60 hover:text-base-content"
                 >
                   <ArrowLeft className="h-4 w-4" />
@@ -133,7 +133,7 @@ const ResetPassword: React.FC = () => {
                 </div>
 
                 <button
-                  onClick={handleBackToLogin}
+                  onClick={handleBackToAuth}
                   className="btn btn-primary w-full font-mono text-sm uppercase tracking-wide"
                 >
                   BACK_TO_LOGIN

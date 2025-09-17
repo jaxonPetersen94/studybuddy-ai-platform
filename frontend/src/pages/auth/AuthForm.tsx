@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Eye,
   EyeOff,
@@ -12,11 +12,21 @@ import {
   User,
 } from 'lucide-react';
 import { useUserStore } from '../../stores/UserStore';
-import TerminalCard from '../../components/layout/TerminalCard';
-import AuthHeader from '../../components/layout/AuthHeader';
+import TerminalCard from '../../components/ui/TerminalCard';
+import AuthHeader from '../../components/auth/AuthHeader';
+import {
+  isValidEmail,
+  isValidPassword,
+  getPasswordStrength,
+  validateLoginForm,
+  validateRegistrationForm,
+  passwordsMatch,
+  isValidName,
+} from '../../utils/validation';
 
 const AuthForm: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [showPassword, setShowPassword] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
@@ -26,34 +36,28 @@ const AuthForm: React.FC = () => {
   const [lastName, setLastName] = useState('');
   const [emailError, setEmailError] = useState('');
 
-  const { login, register, isLoading, error, clearError } = useUserStore();
+  const { login, register, isLoading, error, clearError, handleOAuthSuccess } =
+    useUserStore();
 
-  const isValidEmail = (email: string) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
+  // Handle OAuth success callback
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const token = searchParams.get('token');
+    const oauthError = searchParams.get('error');
 
-  const isValidPassword = (password: string) => {
-    return (
-      password.length >= 8 && /[A-Za-z]/.test(password) && /\d/.test(password)
-    );
-  };
-
-  const getPasswordStrength = (password: string) => {
-    if (password.length < 6) return { strength: 'weak', color: 'error' };
-    if (password.length < 8) return { strength: 'fair', color: 'warning' };
-    if (isValidPassword(password))
-      return { strength: 'strong', color: 'success' };
-    return { strength: 'fair', color: 'warning' };
-  };
+    if (token) {
+      handleOAuthSuccess(token);
+      navigate('/dashboard');
+    } else if (oauthError) {
+      console.error('OAuth error:', oauthError);
+    }
+  }, [location, handleOAuthSuccess, navigate]);
 
   const handleSubmit = async () => {
     clearError();
     setEmailError('');
 
-    if (!email || !password) {
-      return;
-    }
+    if (!email || !password) return;
 
     if (!isValidEmail(email)) {
       setEmailError('INVALID_EMAIL_FORMAT');
@@ -61,23 +65,14 @@ const AuthForm: React.FC = () => {
     }
 
     if (!isLogin) {
-      if (!firstName.trim() || !lastName.trim()) {
-        return;
-      }
-
-      if (password !== confirmPassword) {
-        return;
-      }
-
-      if (!isValidPassword(password)) {
-        return;
-      }
+      if (!isValidName(firstName) || !isValidName(lastName)) return;
+      if (!passwordsMatch(password, confirmPassword)) return;
+      if (!isValidPassword(password)) return;
     }
 
     try {
       if (isLogin) {
         await login({ email, password });
-        navigate('/dashboard');
       } else {
         await register({
           email,
@@ -85,11 +80,16 @@ const AuthForm: React.FC = () => {
           firstName: firstName.trim(),
           lastName: lastName.trim(),
         });
-        navigate('/dashboard');
       }
+      navigate('/dashboard');
     } catch (error) {
       console.error('Authentication failed:', error);
     }
+  };
+
+  const handleOAuthLogin = (provider: 'google' | 'github') => {
+    const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+    window.location.href = `${backendUrl}/api/v1/users/auth/${provider}`;
   };
 
   const toggleMode = () => {
@@ -108,31 +108,25 @@ const AuthForm: React.FC = () => {
   };
 
   const isFormValid = () => {
-    if (!email || !password) return false;
-
     if (isLogin) {
-      return true;
-    } else {
-      return (
-        firstName.trim() &&
-        lastName.trim() &&
-        password === confirmPassword &&
-        isValidPassword(password)
-      );
+      return validateLoginForm(email, password);
     }
+    return validateRegistrationForm({
+      email,
+      password,
+      confirmPassword,
+      firstName,
+      lastName,
+    });
   };
 
   return (
     <div className="min-h-screen relative overflow-hidden">
-      {/* Main Content */}
       <div className="relative z-10 flex items-center justify-center min-h-screen px-4 py-8">
         <div className="w-full max-w-md">
-          {/* Header */}
           <AuthHeader />
 
-          {/* Main Terminal-Style Card */}
           <TerminalCard title="auth.terminal">
-            {/* Error Display */}
             {error && (
               <div className="alert alert-error mb-4">
                 <div className="flex-1">
@@ -141,7 +135,6 @@ const AuthForm: React.FC = () => {
               </div>
             )}
 
-            {/* Mode Switcher */}
             <div className="tabs tabs-boxed bg-base-300/30 mb-6">
               <button
                 onClick={() => isLogin || toggleMode()}
@@ -165,9 +158,7 @@ const AuthForm: React.FC = () => {
               </button>
             </div>
 
-            {/* Form */}
             <div className="space-y-4 select-none">
-              {/* Name Fields (Registration only) */}
               {!isLogin && (
                 <div className="grid grid-cols-2 gap-3">
                   <div className="form-control">
@@ -210,10 +201,9 @@ const AuthForm: React.FC = () => {
                 </div>
               )}
 
-              {/* Email Field */}
               <div className="form-control">
                 <label className="label">
-                  <span className="label-text  text-xs uppercase tracking-wide text-base-content/60">
+                  <span className="label-text text-xs uppercase tracking-wide text-base-content/60">
                     Email Address
                   </span>
                 </label>
@@ -238,7 +228,6 @@ const AuthForm: React.FC = () => {
                 )}
               </div>
 
-              {/* Password Field */}
               <div className="form-control">
                 <label className="label">
                   <span className="label-text font-mono text-xs uppercase tracking-wide text-base-content/60">
@@ -272,7 +261,6 @@ const AuthForm: React.FC = () => {
                     )}
                   </button>
                 </div>
-                {/* Password Strength Indicator (Registration only) */}
                 {!isLogin && password && (
                   <div className="mt-2">
                     <div className="flex justify-between items-center mb-1">
@@ -309,7 +297,6 @@ const AuthForm: React.FC = () => {
                 )}
               </div>
 
-              {/* Confirm Password (Registration only) */}
               {!isLogin && (
                 <div className="form-control">
                   <label className="label">
@@ -335,16 +322,16 @@ const AuthForm: React.FC = () => {
                 </div>
               )}
 
-              {/* Password Mismatch Warning */}
-              {!isLogin && confirmPassword && password !== confirmPassword && (
-                <div className="alert alert-warning">
-                  <span className="font-mono text-xs">
-                    PASSWORDS_DO_NOT_MATCH
-                  </span>
-                </div>
-              )}
+              {!isLogin &&
+                confirmPassword &&
+                !passwordsMatch(password, confirmPassword) && (
+                  <div className="alert alert-warning">
+                    <span className="font-mono text-xs">
+                      PASSWORDS_DO_NOT_MATCH
+                    </span>
+                  </div>
+                )}
 
-              {/* Forgot Password (Login only) */}
               {isLogin && (
                 <div className="text-right">
                   <button
@@ -358,7 +345,6 @@ const AuthForm: React.FC = () => {
                 </div>
               )}
 
-              {/* Submit Button */}
               <button
                 onClick={handleSubmit}
                 disabled={isLoading || !isFormValid()}
@@ -378,14 +364,13 @@ const AuthForm: React.FC = () => {
               </button>
             </div>
 
-            {/* Divider */}
             <div className="divider font-mono text-xs text-base-content/40">
               OR_CONTINUE_WITH
             </div>
 
-            {/* OAuth Buttons */}
             <div className="grid grid-cols-2 gap-3">
               <button
+                onClick={() => handleOAuthLogin('google')}
                 className="btn btn-outline btn-neutral font-mono text-xs"
                 disabled={isLoading}
               >
@@ -393,6 +378,7 @@ const AuthForm: React.FC = () => {
                 GOOGLE
               </button>
               <button
+                onClick={() => handleOAuthLogin('github')}
                 className="btn btn-outline btn-neutral font-mono text-xs"
                 disabled={isLoading}
               >
@@ -401,7 +387,6 @@ const AuthForm: React.FC = () => {
               </button>
             </div>
 
-            {/* Terms (Registration only) */}
             {!isLogin && (
               <p className="text-center text-xs text-base-content/40 mt-6 font-mono">
                 BY_REGISTERING_YOU_ACCEPT_OUR{' '}
@@ -411,7 +396,6 @@ const AuthForm: React.FC = () => {
             )}
           </TerminalCard>
 
-          {/* Footer */}
           <div className="text-center mt-6">
             <p className="text-xs text-base-content/40 font-mono">
               DEMO_PROJECT_BY_JAXON_RAY_PETERSEN

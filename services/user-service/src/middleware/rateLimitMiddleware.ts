@@ -199,14 +199,6 @@ export const passwordResetRateLimit = createRateLimit({
   keyGenerator: emailKeyGenerator,
 });
 
-export const emailVerificationRateLimit = createRateLimit({
-  windowMs: 10 * 60 * 1000,
-  maxAttempts: 3,
-  message: 'Too many email verification requests',
-  code: 'EMAIL_VERIFICATION_RATE_LIMIT_EXCEEDED',
-  keyGenerator: emailKeyGenerator,
-});
-
 export const profileUpdateRateLimit = createRateLimit({
   windowMs: 5 * 60 * 1000,
   maxAttempts: 10,

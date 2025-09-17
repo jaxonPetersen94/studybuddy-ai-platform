@@ -14,7 +14,6 @@ export const API_ENDPOINTS = {
     LOGOUT: buildPath('users', 'logout'),
     REFRESH: buildPath('users', 'refresh'),
     REGISTER: buildPath('users', 'register'),
-    VERIFY_EMAIL: buildPath('users', 'verify-email'),
     RESEND_VERIFICATION: buildPath('users', 'resend-verification'),
     FORGOT_PASSWORD: buildPath('users', 'forgot-password'),
     RESET_PASSWORD: buildPath('users', 'reset-password'),

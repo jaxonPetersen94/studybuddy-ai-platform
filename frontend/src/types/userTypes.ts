@@ -9,6 +9,7 @@ export interface User {
   role: UserRole;
   phone?: string;
   emailVerified: boolean;
+  firstLogin: boolean;
   createdAt: string;
   updatedAt?: string;
   lastLoginAt?: string;

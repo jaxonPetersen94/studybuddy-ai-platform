@@ -4,6 +4,6 @@ declare namespace NodeJS {
     ALLOWED_ORIGINS?: string;
     NODE_ENV?: 'development' | 'production' | 'test';
     JWT_SECRET?: string;
-    USER_SERVICE_URL?: string;
+    USER_SERVICE_BASE_URL?: string;
   }
 }

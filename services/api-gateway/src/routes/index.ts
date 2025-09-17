@@ -38,6 +38,7 @@ router.use((req: Request, res: Response) => {
       'GET /health',
       'POST /api/v1/users/register',
       'POST /api/v1/users/login',
+      'POST /api/v1/users/logout',
       'GET /api/v1/users/profile',
       'PUT /api/v1/users/profile',
       'DELETE /api/v1/users/profile',

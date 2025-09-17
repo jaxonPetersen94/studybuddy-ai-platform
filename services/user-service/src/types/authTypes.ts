@@ -5,6 +5,15 @@ export interface CreateUserData {
   lastName: string;
 }
 
+export interface CreateOAuthUserData {
+  email: string;
+  firstName: string;
+  lastName: string;
+  googleId?: string;
+  githubId?: string;
+  authProvider: 'google' | 'github';
+}
+
 export interface LoginCredentials {
   email: string;
   password: string;
@@ -13,7 +22,7 @@ export interface LoginCredentials {
 export interface AuthTokens {
   accessToken: string;
   refreshToken: string;
-  expiresIn: string;
+  expiresIn: number;
 }
 
 export interface DecodedToken {
@@ -32,4 +41,14 @@ export interface UserProfileUpdateData {
   firstName?: string;
   lastName?: string;
   profilePicture?: string;
+}
+
+export interface OAuthProfile {
+  id: string;
+  emails: { value: string }[];
+  displayName: string;
+  name?: {
+    firstName?: string;
+    lastName?: string;
+  };
 }

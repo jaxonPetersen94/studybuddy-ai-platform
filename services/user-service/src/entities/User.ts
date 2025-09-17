@@ -17,8 +17,8 @@ export class User {
   @Column({ type: 'varchar', unique: true })
   email!: string;
 
-  @Column({ type: 'varchar' })
-  password!: string;
+  @Column({ type: 'varchar', nullable: true })
+  password?: string;
 
   @Column({ name: 'first_name', type: 'varchar', nullable: false })
   firstName!: string;
@@ -28,9 +28,6 @@ export class User {
 
   @Column({ name: 'profile_picture', type: 'varchar', nullable: true })
   profilePicture?: string;
-
-  @Column({ name: 'is_email_verified', type: 'boolean', default: false })
-  isEmailVerified!: boolean;
 
   @Column({ name: 'is_active', type: 'boolean', default: true })
   isActive!: boolean;
@@ -44,15 +41,17 @@ export class User {
   @Column({ name: 'last_login_at', type: 'timestamp', nullable: true })
   lastLoginAt?: Date;
 
-  @Column({ name: 'email_verification_token', type: 'varchar', nullable: true })
-  emailVerificationToken?: string;
+  @Column({ name: 'google_id', type: 'varchar', nullable: true })
+  googleId?: string;
 
-  @Column({
-    name: 'email_verification_expires',
-    type: 'timestamp',
-    nullable: true,
-  })
-  emailVerificationExpires?: Date;
+  @Column({ name: 'github_id', type: 'varchar', nullable: true })
+  githubId?: string;
+
+  @Column({ name: 'auth_provider', type: 'varchar', default: 'email' })
+  authProvider!: string;
+
+  @Column({ name: 'first_login', type: 'boolean', default: true })
+  firstLogin!: boolean;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;
@@ -70,10 +69,6 @@ export class User {
   // Virtual fields
   get fullName(): string {
     return `${this.firstName} ${this.lastName}`.trim();
-  }
-
-  get isVerified(): boolean {
-    return this.isEmailVerified;
   }
 
   // Methods

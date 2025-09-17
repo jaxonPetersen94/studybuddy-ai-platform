@@ -4,6 +4,7 @@ import { authService } from '../services/authService';
 import { tokenUtils } from '../utils/tokens';
 import type { AuthTokens, LoginData, RegisterData } from '../types/authTypes';
 import { User } from '../types/userTypes';
+import { jwtDecode } from 'jwt-decode';
 
 interface UserStore {
   // Core authentication state
@@ -23,6 +24,7 @@ interface UserStore {
   register: (data: RegisterData) => Promise<void>;
   logout: () => Promise<void>;
   refreshAuth: () => Promise<void>;
+  handleOAuthSuccess: (accessToken: string) => Promise<void>;
 
   // Profile management actions
   updateProfile: (data: Partial<User>) => Promise<void>;
@@ -58,10 +60,11 @@ export const useUserStore = create<UserStore>()(
 
         try {
           const response = await authService.login(data);
+
           const tokens = tokenUtils.createTokens(
-            response.accessToken,
-            response.refreshToken,
-            response.expiresIn,
+            response.tokens.accessToken,
+            response.tokens.refreshToken,
+            response.tokens.expiresIn,
           );
 
           set({
@@ -70,12 +73,30 @@ export const useUserStore = create<UserStore>()(
             isAuthenticated: true,
             isLoading: false,
           });
+
+          // Determine message based on firstLogin property
+          const message = response.user.firstLogin
+            ? `Welcome to StudyBuddy, ${response.user.firstName || 'User'}!`
+            : `Welcome back, ${response.user.firstName || 'User'}!`;
+          const title = response.user.firstLogin
+            ? 'Account Created'
+            : 'Login Successful';
+
+          // Show success toast
+          const { useToastStore } = await import('../stores/ToastStore');
+          useToastStore.getState().success(message, { title });
         } catch (error: any) {
           const errorMessage = error.message || 'Login failed';
           set({
             error: errorMessage,
             isLoading: false,
           });
+
+          // Show error toast
+          const { useToastStore } = await import('../stores/ToastStore');
+          useToastStore
+            .getState()
+            .error(errorMessage, { title: 'Login Failed' });
           throw error;
         }
       },
@@ -86,9 +107,9 @@ export const useUserStore = create<UserStore>()(
         try {
           const response = await authService.register(data);
           const tokens = tokenUtils.createTokens(
-            response.accessToken,
-            response.refreshToken,
-            response.expiresIn,
+            response.tokens.accessToken,
+            response.tokens.refreshToken,
+            response.tokens.expiresIn,
           );
 
           set({
@@ -97,12 +118,27 @@ export const useUserStore = create<UserStore>()(
             isAuthenticated: true,
             isLoading: false,
           });
+
+          // Registration is always a new user, so always show welcome message
+          const { useToastStore } = await import('../stores/ToastStore');
+          useToastStore
+            .getState()
+            .success(
+              `Welcome to StudyBuddy, ${response.user.firstName || 'User'}!`,
+              { title: 'Account Created' },
+            );
         } catch (error: any) {
           const errorMessage = error.message || 'Registration failed';
           set({
             error: errorMessage,
             isLoading: false,
           });
+
+          // Show error toast
+          const { useToastStore } = await import('../stores/ToastStore');
+          useToastStore
+            .getState()
+            .error(errorMessage, { title: 'Registration Failed' });
           throw error;
         }
       },
@@ -115,6 +151,16 @@ export const useUserStore = create<UserStore>()(
           if (tokens?.accessToken) {
             await authService.logout(tokens.accessToken);
           }
+
+          // Clear any existing toasts before showing logout message
+          const { useToastStore } = await import('../stores/ToastStore');
+          const toastStore = useToastStore.getState();
+          toastStore.clearAll();
+
+          // Show logout success toast
+          toastStore.info('You have been logged out successfully', {
+            title: 'Logged Out',
+          });
         } catch (error) {
           console.warn('Logout API call failed:', error);
         } finally {
@@ -139,9 +185,9 @@ export const useUserStore = create<UserStore>()(
         try {
           const response = await authService.refreshToken(tokens.refreshToken);
           const newTokens = tokenUtils.createTokens(
-            response.accessToken,
-            response.refreshToken,
-            response.expiresIn,
+            response.tokens.accessToken,
+            response.tokens.refreshToken,
+            response.tokens.expiresIn,
           );
 
           set({ tokens: newTokens });
@@ -151,7 +197,61 @@ export const useUserStore = create<UserStore>()(
             set({ user: response.user });
           }
         } catch (error) {
+          // Show session expired toast
+          const { useToastStore } = await import('../stores/ToastStore');
+          useToastStore
+            .getState()
+            .warning('Your session has expired. Please log in again.', {
+              title: 'Session Expired',
+            });
           await get().logout();
+        }
+      },
+
+      // Handle OAuth success callback
+      handleOAuthSuccess: async (accessToken: string) => {
+        set({ isLoading: true, error: null });
+
+        try {
+          // Decode JWT to get isFirstLogin
+          const decodedToken = jwtDecode<{ isFirstLogin?: boolean }>(
+            accessToken,
+          );
+          const isFirstLogin = decodedToken.isFirstLogin || false;
+
+          // Get user profile from backend
+          const user = await authService.getCurrentUser(accessToken);
+
+          const tokens: AuthTokens = {
+            accessToken,
+            refreshToken: '',
+            expiresAt: Date.now() + 60 * 60 * 1000,
+          };
+
+          set({
+            user,
+            tokens,
+            isAuthenticated: true,
+            isLoading: false,
+          });
+
+          // Use isFirstLogin from JWT token instead of user object
+          const message = isFirstLogin
+            ? `Welcome to StudyBuddy, ${user.firstName || 'User'}!`
+            : `Welcome back, ${user.firstName || 'User'}!`;
+          const title = isFirstLogin ? 'Account Created' : 'Welcome Back';
+
+          const { useToastStore } = await import('../stores/ToastStore');
+          useToastStore.getState().success(message, { title, duration: 4000 });
+        } catch (error: any) {
+          const errorMessage = error.message || 'OAuth authentication failed';
+          set({ error: errorMessage, isLoading: false });
+
+          const { useToastStore } = await import('../stores/ToastStore');
+          useToastStore
+            .getState()
+            .error(errorMessage, { title: 'OAuth Login Failed' });
+          throw error;
         }
       },
 
@@ -171,6 +271,14 @@ export const useUserStore = create<UserStore>()(
             user: updatedUser,
             isLoading: false,
           });
+
+          // Show profile update success toast
+          const { useToastStore } = await import('../stores/ToastStore');
+          useToastStore
+            .getState()
+            .success('Your profile has been updated successfully', {
+              title: 'Profile Updated',
+            });
         } catch (error) {
           const errorMessage =
             error instanceof Error ? error.message : 'Profile update failed';
@@ -178,6 +286,12 @@ export const useUserStore = create<UserStore>()(
             error: errorMessage,
             isLoading: false,
           });
+
+          // Show profile update error toast
+          const { useToastStore } = await import('../stores/ToastStore');
+          useToastStore
+            .getState()
+            .error(errorMessage, { title: 'Profile Update Failed' });
           throw error;
         }
       },
@@ -194,6 +308,14 @@ export const useUserStore = create<UserStore>()(
             tokens.accessToken,
           );
           set({ isLoading: false });
+
+          // Show password change success toast
+          const { useToastStore } = await import('../stores/ToastStore');
+          useToastStore
+            .getState()
+            .success('Your password has been changed successfully', {
+              title: 'Password Updated',
+            });
         } catch (error) {
           const errorMessage =
             error instanceof Error ? error.message : 'Password change failed';
@@ -201,6 +323,12 @@ export const useUserStore = create<UserStore>()(
             error: errorMessage,
             isLoading: false,
           });
+
+          // Show password change error toast
+          const { useToastStore } = await import('../stores/ToastStore');
+          useToastStore
+            .getState()
+            .error(errorMessage, { title: 'Password Change Failed' });
           throw error;
         }
       },
