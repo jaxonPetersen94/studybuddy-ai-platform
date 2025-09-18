@@ -2,6 +2,14 @@
 
 An intelligent learning assistant platform that helps students learn more effectively through AI-powered study tools and personalized learning experiences.
 
+## 📸 Screenshots
+
+![StudyBuddy AI Login](screenshots/auth-form.png)
+_Clean and intuitive authentication interface with login and registration functionality_
+
+![StudyBuddy AI Landing Page](screenshots/new-chat.png)
+_Main landing page featuring subject selection cards and quick action prompts for starting learning sessions_
+
 ## 🏗️ Architecture
 
 ```
