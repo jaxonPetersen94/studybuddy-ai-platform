@@ -3,7 +3,6 @@ import {
   Brain,
   BookOpen,
   Target,
-  Send,
   Lightbulb,
   Code,
   FileText,
@@ -11,14 +10,12 @@ import {
   Microscope,
   Languages,
   TrendingUp,
-  Mic,
-  Camera,
-  Paperclip,
   MessageSquare,
   Clock,
   Star,
 } from 'lucide-react';
 import SidebarComponent from '../../components/layout/Sidebar';
+import ChatInput from '../../components/chat/ChatInput';
 
 // Interfaces for NewChat
 interface QuickAction {
@@ -202,6 +199,15 @@ const NewChat: React.FC = () => {
     setMessage(action.prompt + ' ');
   };
 
+  // Generate placeholder text based on selected subject
+  const getPlaceholder = () => {
+    if (selectedSubject) {
+      const subject = subjects.find((s) => s.id === selectedSubject);
+      return `Ask me anything about ${subject?.name.toLowerCase()}...`;
+    }
+    return 'Ask me anything, upload a file, or describe what you want to learn...';
+  };
+
   return (
     <div className="min-h-[calc(100vh-69px)] flex flex-col">
       {/* Sidebar */}
@@ -304,79 +310,14 @@ const NewChat: React.FC = () => {
             </div>
           </div>
 
-          {/* Chat Interface */}
-          <div className="w-full max-w-3xl mb-8 mx-auto">
-            <div className="relative">
-              <div className="flex items-end space-x-4 p-4 bg-base-100/80 backdrop-blur-sm rounded-2xl border border-base-300/50 shadow-lg">
-                <div className="flex-1">
-                  <textarea
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    placeholder={
-                      selectedSubject
-                        ? `Ask me anything about ${subjects
-                            .find((s) => s.id === selectedSubject)
-                            ?.name.toLowerCase()}...`
-                        : 'Ask me anything, upload a file, or describe what you want to learn...'
-                    }
-                    className="w-full resize-none border-0 bg-transparent text-base-content placeholder-base-content/50 focus:outline-none min-h-[60px] max-h-32"
-                    rows={1}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        handleSendMessage();
-                      }
-                    }}
-                  />
-                </div>
-
-                <div className="flex items-center space-x-2 flex-shrink-0">
-                  <button
-                    className="btn btn-ghost btn-sm btn-circle"
-                    title="Attach file"
-                  >
-                    <Paperclip className="w-4 h-4" />
-                  </button>
-                  <button
-                    className="btn btn-ghost btn-sm btn-circle"
-                    title="Voice input"
-                  >
-                    <Mic className="w-4 h-4" />
-                  </button>
-                  <button
-                    className="btn btn-ghost btn-sm btn-circle"
-                    title="Camera"
-                  >
-                    <Camera className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={handleSendMessage}
-                    disabled={!message.trim()}
-                    className="btn btn-primary btn-sm btn-circle"
-                  >
-                    <Send className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-
-              {isTyping && (
-                <div className="absolute -bottom-8 left-4 flex items-center space-x-3 text-sm text-base-content/60">
-                  <div className="flex space-x-1">
-                    <div className="w-2 h-2 bg-primary rounded-full animate-bounce"></div>
-                    <div
-                      className="w-2 h-2 bg-primary rounded-full animate-bounce"
-                      style={{ animationDelay: '0.1s' }}
-                    ></div>
-                    <div
-                      className="w-2 h-2 bg-primary rounded-full animate-bounce"
-                      style={{ animationDelay: '0.2s' }}
-                    ></div>
-                  </div>
-                  <span className="font-mono text-xs">AI is thinking...</span>
-                </div>
-              )}
-            </div>
-          </div>
+          {/* Chat Input Component */}
+          <ChatInput
+            value={message}
+            onChange={setMessage}
+            onSend={handleSendMessage}
+            placeholder={getPlaceholder()}
+            isTyping={isTyping}
+          />
 
           {/* Quick Actions */}
           <div className="w-full max-w-4xl mx-auto">
