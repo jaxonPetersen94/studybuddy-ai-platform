@@ -48,16 +48,17 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
 
   return (
     <div className={`relative ${className}`} ref={dropdownRef}>
+      {/* Updated button to match design system */}
       <button
-        className={`btn btn-square btn-ghost transition-all duration-200 ${
-          isOpen ? 'bg-base-300/50 border border-primary/30' : ''
+        className={`relative w-8 h-8 bg-primary/10 border border-primary/20 rounded-lg flex items-center justify-center hover:opacity-80 transition-opacity cursor-pointer ${
+          isOpen ? 'opacity-80' : ''
         }`}
         onClick={() => setIsOpen(!isOpen)}
         disabled={isLoggingOut}
       >
-        <User className="w-5 h-5 text-base-content/60" />
+        <User className="w-5 h-5 text-primary" />
         <ChevronDown
-          className={`w-4 h-4 text-base-content/80 absolute bottom-0 right-0 transition-transform duration-200 ${
+          className={`w-3 h-3 text-primary absolute bottom-[-2px] right-0 transition-transform duration-200 ${
             isOpen ? 'rotate-180' : ''
           }`}
         />

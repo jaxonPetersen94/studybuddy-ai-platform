@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import SidebarComponent from '../../components/layout/Sidebar';
 import ChatInput from '../../components/chat/ChatInput';
+import SubjectCard from '../../components/ui/SubjectCard';
+import PillButton from '../../components/ui/PillButton';
 
 // Interfaces for NewChat
 interface QuickAction {
@@ -205,7 +207,7 @@ const NewChat: React.FC = () => {
       const subject = subjects.find((s) => s.id === selectedSubject);
       return `Ask me anything about ${subject?.name.toLowerCase()}...`;
     }
-    return 'Ask me anything, upload a file, or describe what you want to learn...';
+    return 'Ask me anything, upload a file, or describe what you want to study...';
   };
 
   return (
@@ -277,35 +279,22 @@ const NewChat: React.FC = () => {
           {/* Subject Selection */}
           <div className="w-full mb-8">
             <div className="text-sm font-mono text-base-content/60 uppercase tracking-wide mb-4 text-center">
-              Choose Your Focus
+              Choose A Subject (Optional)
             </div>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
               {subjects.map((subject) => (
-                <button
+                <SubjectCard
                   key={subject.id}
-                  onClick={() =>
-                    setSelectedSubject(
-                      selectedSubject === subject.id ? null : subject.id,
-                    )
+                  id={subject.id}
+                  name={subject.name}
+                  icon={subject.icon}
+                  color={subject.color}
+                  description={subject.description}
+                  isSelected={selectedSubject === subject.id}
+                  onClick={(id) =>
+                    setSelectedSubject(selectedSubject === id ? null : id)
                   }
-                  className={`p-4 rounded-xl border-2 transition-all hover:scale-105 ${
-                    selectedSubject === subject.id
-                      ? 'border-primary bg-primary/10 shadow-lg'
-                      : 'border-base-300/50 bg-base-100/50 hover:border-primary/50'
-                  }`}
-                >
-                  <div
-                    className={`${subject.color} mb-1.5 flex justify-center`}
-                  >
-                    {subject.icon}
-                  </div>
-                  <div className="font-mono text-xs text-base-content font-semibold mb-1.5">
-                    {subject.name}
-                  </div>
-                  <div className="text-xs text-base-content/60 leading-tight">
-                    {subject.description}
-                  </div>
-                </button>
+                />
               ))}
             </div>
           </div>
@@ -326,18 +315,12 @@ const NewChat: React.FC = () => {
             </div>
             <div className="flex flex-wrap items-center justify-center gap-3">
               {quickActions.map((action) => (
-                <button
+                <PillButton
                   key={action.id}
+                  icon={action.icon}
+                  label={action.title}
                   onClick={() => handleQuickAction(action)}
-                  className="inline-flex items-center space-x-2 px-3 py-2 rounded-full bg-base-200/60 border border-base-300/40 hover:border-primary/60 hover:bg-primary/10 transition-all text-sm group hover:scale-105 hover:shadow-sm"
-                >
-                  <div className="text-primary/80 group-hover:text-primary transition-colors flex-shrink-0">
-                    {action.icon}
-                  </div>
-                  <span className="font-mono text-xs font-medium text-base-content/80 group-hover:text-base-content transition-colors whitespace-nowrap">
-                    {action.title}
-                  </span>
-                </button>
+                />
               ))}
             </div>
           </div>

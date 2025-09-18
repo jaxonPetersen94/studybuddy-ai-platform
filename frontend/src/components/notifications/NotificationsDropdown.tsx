@@ -86,10 +86,10 @@ const NotificationsDropdown: React.FC = () => {
   return (
     <div className="relative" ref={dropdownRef}>
       <button
-        className="btn btn-square btn-ghost btn-sm lg:btn-md hover:bg-base-300/50 transition-colors relative"
+        className="relative w-8 h-8 bg-primary/10 border border-primary/20 rounded-lg flex items-center justify-center hover:opacity-80 transition-opacity cursor-pointer"
         onClick={() => setIsOpen(!isOpen)}
       >
-        <Bell className="w-4 h-4 lg:w-5 lg:h-5 text-base-content/60" />
+        <Bell className="w-5 h-5 text-primary" />
         {unreadCount > 0 && (
           <div className="absolute -top-1 -right-1 bg-error text-error-content text-xs font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
             {unreadCount > 9 ? '9+' : unreadCount}

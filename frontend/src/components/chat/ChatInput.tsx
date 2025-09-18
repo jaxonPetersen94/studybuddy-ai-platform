@@ -70,12 +70,21 @@ const ChatInput: React.FC<ChatInputProps> = ({
     }
   }, [onSend, value, disabled]);
 
+  const handleContainerClick = useCallback(() => {
+    if (!disabled && textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  }, [disabled]);
+
   const canSend = value.trim() && !disabled;
 
   return (
     <div className="w-full max-w-3xl mb-8 mx-auto select-none">
       <div className="relative select-none">
-        <div className="p-4 bg-base-100/80 backdrop-blur-sm rounded-2xl border border-base-300/50 shadow-lg select-none">
+        <div
+          className="p-4 bg-base-100/80 backdrop-blur-sm rounded-2xl border border-base-300/50 shadow-lg select-none"
+          onClick={handleContainerClick}
+        >
           {/* Text input */}
           <div className="w-full mb-2">
             <div className="flex w-full">
@@ -103,7 +112,10 @@ const ChatInput: React.FC<ChatInputProps> = ({
           <div className="flex items-center justify-end gap-2 select-none">
             {onFileUpload && (
               <button
-                onClick={onFileUpload}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onFileUpload();
+                }}
                 disabled={disabled}
                 className="btn btn-ghost btn-sm btn-circle hover:bg-base-200"
                 title="Attach file"
@@ -115,7 +127,10 @@ const ChatInput: React.FC<ChatInputProps> = ({
 
             {onVoiceInput && (
               <button
-                onClick={onVoiceInput}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onVoiceInput();
+                }}
                 disabled={disabled}
                 className="btn btn-ghost btn-sm btn-circle hover:bg-base-200"
                 title="Voice input"
@@ -127,7 +142,10 @@ const ChatInput: React.FC<ChatInputProps> = ({
 
             {onCameraInput && (
               <button
-                onClick={onCameraInput}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onCameraInput();
+                }}
                 disabled={disabled}
                 className="btn btn-ghost btn-sm btn-circle hover:bg-base-200"
                 title="Camera"
@@ -138,7 +156,10 @@ const ChatInput: React.FC<ChatInputProps> = ({
             )}
 
             <button
-              onClick={handleSend}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleSend();
+              }}
               disabled={!canSend}
               className="btn btn-primary btn-sm btn-circle disabled:opacity-50 disabled:cursor-not-allowed"
               title="Send message"
