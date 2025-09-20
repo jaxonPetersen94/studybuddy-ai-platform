@@ -42,13 +42,11 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
       await logout();
     } catch (error) {
       console.error('Logout failed:', error);
-      // Maybe we show a toast notification here?
     }
   };
 
   return (
     <div className={`relative ${className}`} ref={dropdownRef}>
-      {/* Updated button to match design system */}
       <button
         className={`relative w-8 h-8 bg-primary/10 border border-primary/20 rounded-lg flex items-center justify-center hover:opacity-80 transition-opacity cursor-pointer ${
           isOpen ? 'opacity-80' : ''
@@ -74,9 +72,7 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
             <Settings className="w-4 h-4 text-base-content/60" />
             <span>USER_SETTINGS</span>
           </button>
-
           <div className="border-t border-base-300/30 my-1" />
-
           <button
             onClick={handleLogout}
             className="flex items-center space-x-3 w-full px-4 py-2 text-left text-sm font-mono text-error hover:bg-error/10 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"

@@ -1,4 +1,13 @@
+// ============================================
+// ENUMS AND TYPES
+// ============================================
+
 export type UserRole = 'admin' | 'user';
+export type LearningLevel = 'beginner' | 'intermediate' | 'advanced';
+
+// ============================================
+// CORE USER INTERFACE
+// ============================================
 
 export interface User {
   id: string;
@@ -15,9 +24,26 @@ export interface User {
   lastLoginAt?: string;
 }
 
-export interface UserPreferences {
-  // To-Do
+// ============================================
+// USER PROFILE INTERFACE
+// ============================================
+
+export interface UserProfile {
+  name: string;
+  email: string;
+  avatar: string;
+  joinDate: string;
+  learningLevel: LearningLevel;
+  preferredSubjects: string[];
+  timezone: string;
+  location: string;
+  bio: string;
+  studyGoal: string;
 }
+
+// ============================================
+// UPDATE INTERFACES
+// ============================================
 
 export interface UpdateUserData {
   firstName?: string;

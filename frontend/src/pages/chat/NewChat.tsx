@@ -19,7 +19,6 @@ import ChatInput from '../../components/chat/ChatInput';
 import SubjectCard from '../../components/ui/SubjectCard';
 import PillButton from '../../components/ui/PillButton';
 
-// Interfaces for NewChat
 interface QuickAction {
   id: string;
   title: string;
@@ -46,10 +45,21 @@ interface ChatSession {
 }
 
 const NewChat: React.FC = () => {
-  const [message, setMessage] = useState('');
+  const [userText, setUserText] = useState('');
+  const [selectedAction, setSelectedAction] = useState<QuickAction | null>(
+    null,
+  );
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
   const [isTyping, setIsTyping] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // State for managing the abrupt transition
+  const [hasStartedChat, setHasStartedChat] = useState(false);
+
+  // Compute the full message by combining action prompt + user text
+  const message = selectedAction
+    ? selectedAction.prompt + ' ' + userText
+    : userText;
 
   // Mock chat sessions for sidebar
   const chatSessions: ChatSession[] = [
@@ -189,20 +199,45 @@ const NewChat: React.FC = () => {
   const handleSendMessage = () => {
     if (!message.trim()) return;
 
+    // Immediately switch to chat mode and start typing
+    setHasStartedChat(true);
     setIsTyping(true);
+
+    // Stop typing animation after 2 seconds
     setTimeout(() => {
       setIsTyping(false);
     }, 2000);
 
-    setMessage('');
+    // Clear both user text and selected action
+    setUserText('');
+    setSelectedAction(null);
   };
 
   const handleQuickAction = (action: QuickAction) => {
-    setMessage(action.prompt + ' ');
+    setSelectedAction(action);
   };
 
-  // Generate placeholder text based on selected subject
+  const handleMessageChange = (newMessage: string) => {
+    if (selectedAction) {
+      // Extract user text by removing the action prompt prefix
+      const promptWithSpace = selectedAction.prompt + ' ';
+      if (newMessage.startsWith(promptWithSpace)) {
+        setUserText(newMessage.substring(promptWithSpace.length));
+      } else {
+        // If user deleted part of the prompt, clear the action
+        setSelectedAction(null);
+        setUserText(newMessage);
+      }
+    } else {
+      setUserText(newMessage);
+    }
+  };
+
+  // Generate placeholder text based on selected subject or action
   const getPlaceholder = () => {
+    if (selectedAction) {
+      return `${selectedAction.description}...`;
+    }
     if (selectedSubject) {
       const subject = subjects.find((s) => s.id === selectedSubject);
       return `Ask me anything about ${subject?.name.toLowerCase()}...`;
@@ -258,58 +293,71 @@ const NewChat: React.FC = () => {
       </SidebarComponent>
 
       {/* Main Content */}
-      <div className="flex-1 flex items-center justify-center px-6 py-12">
-        <div className="max-w-4xl w-full">
-          {/* Header */}
-          <div className="text-center mb-12">
-            <h1 className="text-4xl lg:text-5xl font-bold text-base-content mb-4 tracking-tight">
-              What would you like to{' '}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">
-                study
-              </span>
-              ?
-            </h1>
-            <p className="text-lg text-base-content/70 max-w-2xl mx-auto leading-relaxed">
-              StudyBuddy adapts to your learning style, creates personalized
-              study materials, and helps you master any subject through
-              intelligent practice and real-time feedback.
-            </p>
-          </div>
-
-          {/* Subject Selection */}
-          <div className="w-full mb-8">
-            <div className="text-sm font-mono text-base-content/60 uppercase tracking-wide mb-4 text-center">
-              Choose A Subject (Optional)
+      <div
+        className={`flex-1 flex flex-col ${
+          hasStartedChat
+            ? 'justify-end pb-6'
+            : 'justify-center items-center py-12'
+        }`}
+      >
+        {/* Centered content container - only when chat hasn't started */}
+        {!hasStartedChat && (
+          <div className="max-w-4xl w-full px-6">
+            {/* Header */}
+            <div className="text-center mb-12">
+              <h1 className="text-4xl lg:text-5xl font-bold text-base-content mb-4 tracking-tight">
+                What would you like to{' '}
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">
+                  study
+                </span>
+                ?
+              </h1>
+              <p className="text-lg text-base-content/70 max-w-2xl mx-auto leading-relaxed">
+                StudyBuddy adapts to your learning style, creates personalized
+                study materials, and helps you master any subject through
+                intelligent practice and real-time feedback.
+              </p>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-              {subjects.map((subject) => (
-                <SubjectCard
-                  key={subject.id}
-                  id={subject.id}
-                  name={subject.name}
-                  icon={subject.icon}
-                  color={subject.color}
-                  description={subject.description}
-                  isSelected={selectedSubject === subject.id}
-                  onClick={(id) =>
-                    setSelectedSubject(selectedSubject === id ? null : id)
-                  }
-                />
-              ))}
+
+            {/* Subject Selection */}
+            <div className="w-full mb-8">
+              <div className="text-sm font-mono text-base-content/60 uppercase tracking-wide mb-4 text-center">
+                Choose A Subject (Optional)
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                {subjects.map((subject) => (
+                  <SubjectCard
+                    key={subject.id}
+                    id={subject.id}
+                    name={subject.name}
+                    icon={subject.icon}
+                    color={subject.color}
+                    description={subject.description}
+                    isSelected={selectedSubject === subject.id}
+                    onClick={(id) =>
+                      setSelectedSubject(selectedSubject === id ? null : id)
+                    }
+                  />
+                ))}
+              </div>
             </div>
           </div>
+        )}
 
-          {/* Chat Input Component */}
+        {/* Chat Input Container - snaps from center to bottom */}
+        <div className="w-full max-w-4xl mx-auto px-6">
           <ChatInput
             value={message}
-            onChange={setMessage}
+            onChange={handleMessageChange}
             onSend={handleSendMessage}
             placeholder={getPlaceholder()}
             isTyping={isTyping}
           />
+        </div>
 
-          {/* Quick Actions */}
-          <div className="w-full max-w-4xl mx-auto">
+        {/* Quick Actions - only when chat hasn't started */}
+        {!hasStartedChat && (
+          <div className="max-w-4xl w-full px-6 mt-8">
             <div className="text-sm font-mono text-base-content/60 uppercase tracking-wide mb-4 text-center">
               Quick Actions
             </div>
@@ -324,7 +372,7 @@ const NewChat: React.FC = () => {
               ))}
             </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

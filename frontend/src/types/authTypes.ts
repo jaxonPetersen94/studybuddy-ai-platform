@@ -1,5 +1,9 @@
 import { User, UserRole } from './userTypes';
 
+// ============================================
+// AUTHENTICATION REQUEST DATA
+// ============================================
+
 export interface LoginData {
   email: string;
   password: string;
@@ -34,6 +38,26 @@ export interface RefreshTokenData {
   refreshToken: string;
 }
 
+// ============================================
+// TOKEN INTERFACES
+// ============================================
+
+export interface AuthResponseTokens {
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
+}
+
+export interface AuthTokens {
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: number;
+}
+
+// ============================================
+// API RESPONSE INTERFACES
+// ============================================
+
 export interface AuthResponse {
   user: User;
   tokens: AuthResponseTokens;
@@ -55,17 +79,30 @@ export interface LogoutResponse {
   message: string;
 }
 
-export interface AuthResponseTokens {
-  accessToken: string;
-  refreshToken: string;
-  expiresIn: number;
+// ============================================
+// FORM DATA INTERFACES
+// ============================================
+
+export interface LoginFormData extends LoginData {
+  rememberMe?: boolean;
 }
 
-export interface AuthTokens {
-  accessToken: string;
-  refreshToken: string;
-  expiresAt: number;
+export interface RegisterFormData extends RegisterData {
+  confirmPassword: string;
+  acceptTerms: boolean;
 }
+
+export interface PasswordState {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
+export type PasswordField = keyof PasswordState;
+
+// ============================================
+// STATE MANAGEMENT
+// ============================================
 
 export interface AuthState {
   user: User | null;
@@ -84,14 +121,9 @@ export type AuthAction =
   | { type: 'UPDATE_USER'; payload: User }
   | { type: 'CLEAR_ERROR' };
 
-export interface LoginFormData extends LoginData {
-  rememberMe?: boolean;
-}
-
-export interface RegisterFormData extends RegisterData {
-  confirmPassword: string;
-  acceptTerms: boolean;
-}
+// ============================================
+// COMPONENT INTERFACES
+// ============================================
 
 export interface ProtectedRouteProps {
   children: React.ReactNode;

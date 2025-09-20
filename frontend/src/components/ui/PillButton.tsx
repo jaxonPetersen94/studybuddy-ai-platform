@@ -24,7 +24,7 @@ const PillButton: React.FC<PillButtonProps> = ({
       <div className="text-primary/80 group-hover:text-primary transition-colors flex-shrink-0">
         {icon}
       </div>
-      <span className="font-mono text-xs font-medium text-base-content/80 group-hover:text-base-content transition-colors whitespace-nowrap">
+      <span className="font-mono text-xs font-medium text-base-content/80 group-hover:text-base-content transition-colors whitespace-nowrap select-none">
         {label}
       </span>
     </button>

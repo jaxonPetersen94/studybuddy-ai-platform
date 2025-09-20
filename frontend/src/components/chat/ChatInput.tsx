@@ -79,7 +79,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
   const canSend = value.trim() && !disabled;
 
   return (
-    <div className="w-full max-w-3xl mb-8 mx-auto select-none">
+    <div className="w-full max-w-3xl mb-8 mx-auto select-none cursor-text">
       <div className="relative select-none">
         <div
           className="p-4 bg-base-100/80 backdrop-blur-sm rounded-2xl border border-base-300/50 shadow-lg select-none"
@@ -117,7 +117,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
                   onFileUpload();
                 }}
                 disabled={disabled}
-                className="btn btn-ghost btn-sm btn-circle hover:bg-base-200"
+                className="btn btn-ghost btn-sm btn-circle hover:bg-base-200 disabled:cursor-default"
                 title="Attach file"
                 aria-label="Attach file"
               >
@@ -161,7 +161,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
                 handleSend();
               }}
               disabled={!canSend}
-              className="btn btn-primary btn-sm btn-circle disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn btn-primary btn-sm btn-circle disabled:opacity-50 disabled:cursor-not-allowed hover:scale-110 transition-transform duration-200 ease-out"
               title="Send message"
               aria-label="Send message"
             >
