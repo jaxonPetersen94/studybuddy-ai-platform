@@ -22,23 +22,14 @@ export interface User {
   createdAt: string;
   updatedAt?: string;
   lastLoginAt?: string;
-}
 
-// ============================================
-// USER PROFILE INTERFACE
-// ============================================
-
-export interface UserProfile {
-  name: string;
-  email: string;
-  avatar: string;
-  joinDate: string;
-  learningLevel: LearningLevel;
-  preferredSubjects: string[];
-  timezone: string;
-  location: string;
-  bio: string;
-  studyGoal: string;
+  // Profile fields
+  learningLevel?: LearningLevel;
+  preferredSubjects?: string[];
+  timezone?: string;
+  location?: string;
+  bio?: string;
+  studyGoal?: string;
 }
 
 // ============================================
@@ -50,9 +41,39 @@ export interface UpdateUserData {
   lastName?: string;
   phone?: string;
   avatar?: string;
+  learningLevel?: LearningLevel;
+  preferredSubjects?: string[];
+  timezone?: string;
+  location?: string;
+  bio?: string;
+  studyGoal?: string;
 }
 
 export interface UpdateProfileResponse {
   user: User;
   message: string;
 }
+
+// ============================================
+// HELPER TYPES
+// ============================================
+
+// Type for profile-specific fields only
+export type UserProfileFields = Pick<
+  User,
+  | 'learningLevel'
+  | 'preferredSubjects'
+  | 'timezone'
+  | 'location'
+  | 'bio'
+  | 'studyGoal'
+>;
+
+// Type for basic user info
+export type UserBasicInfo = Pick<
+  User,
+  'id' | 'email' | 'firstName' | 'lastName' | 'avatar' | 'role'
+>;
+
+// Type for user settings/preferences
+export type UserPreferences = Pick<User, 'timezone' | 'preferredSubjects'>;
