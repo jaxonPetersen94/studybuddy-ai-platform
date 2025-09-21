@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import SidebarComponent from '../../components/layout/Sidebar';
 import ChatInput from '../../components/chat/ChatInput';
+import ChatBubble from '../../components/chat/ChatBubble';
 import SubjectCard from '../../components/ui/SubjectCard';
 import PillButton from '../../components/ui/PillButton';
 
@@ -44,6 +45,14 @@ interface ChatSession {
   isStarred: boolean;
 }
 
+interface ChatMessage {
+  id: string;
+  message: string;
+  isUser: boolean;
+  timestamp: Date;
+  isTyping?: boolean;
+}
+
 const NewChat: React.FC = () => {
   const [userText, setUserText] = useState('');
   const [selectedAction, setSelectedAction] = useState<QuickAction | null>(
@@ -52,6 +61,7 @@ const NewChat: React.FC = () => {
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
   const [isTyping, setIsTyping] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
 
   // State for managing the abrupt transition
   const [hasStartedChat, setHasStartedChat] = useState(false);
@@ -199,13 +209,46 @@ const NewChat: React.FC = () => {
   const handleSendMessage = () => {
     if (!message.trim()) return;
 
+    // Add user message to chat
+    const userMessage: ChatMessage = {
+      id: Date.now().toString(),
+      message: message.trim(),
+      isUser: true,
+      timestamp: new Date(),
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+
     // Immediately switch to chat mode and start typing
     setHasStartedChat(true);
     setIsTyping(true);
 
-    // Stop typing animation after 2 seconds
+    // Add typing indicator for bot
+    const typingMessage: ChatMessage = {
+      id: 'typing',
+      message: '',
+      isUser: false,
+      timestamp: new Date(),
+      isTyping: true,
+    };
+
+    setMessages((prev) => [...prev, typingMessage]);
+
+    // Simulate bot response after 2 seconds
     setTimeout(() => {
       setIsTyping(false);
+
+      // Remove typing indicator and add bot response
+      setMessages((prev) => {
+        const withoutTyping = prev.filter((msg) => msg.id !== 'typing');
+        const botResponse: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          message: `I understand you'd like help with: "${message.trim()}". Let me assist you with that!`,
+          isUser: false,
+          timestamp: new Date(),
+        };
+        return [...withoutTyping, botResponse];
+      });
     }, 2000);
 
     // Clear both user text and selected action
@@ -243,6 +286,26 @@ const NewChat: React.FC = () => {
       return `Ask me anything about ${subject?.name.toLowerCase()}...`;
     }
     return 'Ask me anything, upload a file, or describe what you want to study...';
+  };
+
+  const handleCopyMessage = (messageText: string) => {
+    navigator.clipboard.writeText(messageText);
+    // You could add a toast notification here
+  };
+
+  const handleLikeMessage = (messageId: string) => {
+    // Handle like functionality
+    console.log('Liked message:', messageId);
+  };
+
+  const handleDislikeMessage = (messageId: string) => {
+    // Handle dislike functionality
+    console.log('Disliked message:', messageId);
+  };
+
+  const handleRegenerateMessage = (messageId: string) => {
+    // Handle regenerate functionality
+    console.log('Regenerate message:', messageId);
   };
 
   return (
@@ -300,6 +363,42 @@ const NewChat: React.FC = () => {
             : 'justify-center items-center py-12'
         }`}
       >
+        {/* Chat Messages - only when chat has started */}
+        {hasStartedChat && (
+          <div className="flex-1 w-full max-w-4xl mx-auto px-6 overflow-y-auto">
+            <div className="space-y-4 py-6">
+              {messages.map((msg) => (
+                <div key={msg.id} className="group">
+                  <ChatBubble
+                    message={msg.message}
+                    isUser={msg.isUser}
+                    timestamp={msg.timestamp}
+                    isTyping={msg.isTyping}
+                    onCopy={
+                      !msg.isUser
+                        ? () => handleCopyMessage(msg.message)
+                        : undefined
+                    }
+                    onLike={
+                      !msg.isUser ? () => handleLikeMessage(msg.id) : undefined
+                    }
+                    onDislike={
+                      !msg.isUser
+                        ? () => handleDislikeMessage(msg.id)
+                        : undefined
+                    }
+                    onRegenerate={
+                      !msg.isUser
+                        ? () => handleRegenerateMessage(msg.id)
+                        : undefined
+                    }
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Centered content container - only when chat hasn't started */}
         {!hasStartedChat && (
           <div className="max-w-4xl w-full px-6">

@@ -104,7 +104,7 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({
         {/* Message bubble */}
         <div
           className={`
-            relative px-4 py-3 rounded-2xl max-w-full
+            relative px-4 py-3 rounded-2xl max-w-full shadow-lg
             ${
               isUser
                 ? 'bg-primary text-primary-content rounded-br-md'
