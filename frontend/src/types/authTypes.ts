@@ -1,4 +1,4 @@
-import { User, UserRole } from './userTypes';
+import { User, UserRole, LearningLevel } from './userTypes';
 
 // ============================================
 // AUTHENTICATION REQUEST DATA
@@ -39,6 +39,23 @@ export interface RefreshTokenData {
 }
 
 // ============================================
+// PROFILE UPDATE DATA
+// ============================================
+
+export interface UpdateProfileData {
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  avatar?: string;
+  learningLevel?: LearningLevel;
+  preferredSubjects?: string[];
+  timezone?: string;
+  location?: string;
+  bio?: string;
+  studyGoal?: string;
+}
+
+// ============================================
 // TOKEN INTERFACES
 // ============================================
 
@@ -76,6 +93,11 @@ export interface ResetPasswordResponse {
 
 export interface LogoutResponse {
   success: boolean;
+  message: string;
+}
+
+export interface UpdateProfileResponse {
+  user: User;
   message: string;
 }
 

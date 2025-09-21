@@ -1,16 +1,40 @@
-import React from 'react';
-import { User, Calendar, Upload, Camera, Globe } from 'lucide-react';
-import { UserProfile } from '../../types/userTypes';
+import React, { useState, useEffect } from 'react';
+import { User, Calendar, Upload, Globe } from 'lucide-react';
+import { User as UserType } from '../../types/userTypes';
 
 interface UserProfileSettingsProps {
-  profile: UserProfile;
-  onProfileChange: (profile: UserProfile) => void;
+  user: UserType | null;
+  isLoading: boolean;
+  onProfileChange: (newProfile: Partial<UserType>) => Promise<void>;
 }
 
 const UserProfileSettings: React.FC<UserProfileSettingsProps> = ({
-  profile,
+  user,
+  isLoading,
   onProfileChange,
 }) => {
+  const [localProfile, setLocalProfile] = useState<Partial<UserType>>({});
+  const [hasChanges, setHasChanges] = useState(false);
+
+  // Initialize local profile state when user data loads
+  useEffect(() => {
+    if (user) {
+      setLocalProfile({
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+        email: user.email || '',
+        phone: user.phone || '',
+        bio: user.bio || '',
+        location: user.location || '',
+        timezone: user.timezone || 'America/New_York',
+        learningLevel: user.learningLevel || 'beginner',
+        studyGoal: user.studyGoal || '',
+        avatar: user.avatar || '',
+      });
+      setHasChanges(false);
+    }
+  }, [user]);
+
   const timezones = [
     { value: 'America/New_York', label: 'Eastern Time (ET)' },
     { value: 'America/Chicago', label: 'Central Time (CT)' },
@@ -37,11 +61,34 @@ const UserProfileSettings: React.FC<UserProfileSettingsProps> = ({
     'Hobby Learning',
   ];
 
-  const handleInputChange = (field: keyof UserProfile, value: any) => {
-    onProfileChange({
-      ...profile,
+  const handleInputChange = (field: keyof UserType, value: any) => {
+    const updatedProfile = {
+      ...localProfile,
       [field]: value,
-    });
+    };
+
+    setLocalProfile(updatedProfile);
+    setHasChanges(true);
+  };
+
+  const handleResetChanges = () => {
+    if (user) {
+      const resetProfile = {
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+        email: user.email || '',
+        phone: user.phone || '',
+        bio: user.bio || '',
+        location: user.location || '',
+        timezone: user.timezone || 'America/New_York',
+        learningLevel: user.learningLevel || 'beginner',
+        studyGoal: user.studyGoal || '',
+        avatar: user.avatar || '',
+      };
+
+      setLocalProfile(resetProfile);
+      setHasChanges(false);
+    }
   };
 
   const getLearningLevelColor = (level: string) => {
@@ -57,6 +104,41 @@ const UserProfileSettings: React.FC<UserProfileSettingsProps> = ({
     }
   };
 
+  const getDisplayName = () => {
+    const firstName = localProfile.firstName || user?.firstName || '';
+    const lastName = localProfile.lastName || user?.lastName || '';
+    return firstName && lastName
+      ? `${firstName} ${lastName}`
+      : firstName || lastName || 'Your Name';
+  };
+
+  const getInitials = () => {
+    const firstName = localProfile.firstName || user?.firstName || '';
+    const lastName = localProfile.lastName || user?.lastName || '';
+    const firstInitial = firstName.charAt(0).toUpperCase();
+    const lastInitial = lastName.charAt(0).toUpperCase();
+    return firstInitial + lastInitial || 'YN';
+  };
+
+  const handleAvatarUpload = () => {
+    // Placeholder for avatar upload functionality
+    // You'll need to implement file upload logic here
+    console.log('Avatar upload clicked - implement file upload logic');
+  };
+
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="loading loading-spinner loading-lg"></div>
+          <p className="font-mono text-sm text-base-content/60">
+            Loading profile...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Profile Header Card */}
@@ -66,14 +148,14 @@ const UserProfileSettings: React.FC<UserProfileSettingsProps> = ({
             {/* Avatar Section */}
             <div className="flex flex-col items-center space-y-3">
               <div className="relative group">
-                <div className="w-20 h-20 bg-gradient-to-br from-primary to-secondary rounded-box flex items-center justify-center text-2xl font-bold text-primary-content shadow-lg">
-                  {profile.avatar || profile.name.charAt(0).toUpperCase()}
+                <div className="w-20 h-20 bg-gradient-to-br from-primary to-secondary rounded-box flex items-center justify-center text-2xl font-bold text-primary-content shadow-lg select-none">
+                  {localProfile.avatar || user.avatar || getInitials()}
                 </div>
-                <button className="absolute -bottom-1 -right-1 btn btn-xs btn-primary rounded-full opacity-80 hover:opacity-100 transition-opacity">
-                  <Camera className="w-3 h-3" />
-                </button>
               </div>
-              <button className="btn btn-xs font-mono bg-base-300/50 border-base-300/50 text-base-content/60 hover:bg-primary/10 hover:border-primary/30 hover:text-primary transition-all duration-200">
+              <button
+                onClick={handleAvatarUpload}
+                className="btn btn-xs font-mono bg-base-300/50 border-base-300/50 text-base-content/60 hover:bg-primary/10 hover:border-primary/30 hover:text-primary transition-all duration-200"
+              >
                 <Upload className="w-3 h-3" />
                 CHANGE_AVATAR
               </button>
@@ -83,32 +165,42 @@ const UserProfileSettings: React.FC<UserProfileSettingsProps> = ({
             <div className="flex-1 text-center md:text-left">
               <div className="flex flex-col md:flex-row md:items-center md:space-x-4 mb-2">
                 <h3 className="text-xl font-bold text-base-content">
-                  {profile.name || 'Your Name'}
+                  {getDisplayName()}
                 </h3>
                 <div
                   className={`badge ${getLearningLevelColor(
-                    profile.learningLevel,
+                    localProfile.learningLevel ||
+                      user.learningLevel ||
+                      'beginner',
                   )} font-mono text-xs mt-2 md:mt-0`}
                 >
-                  {profile.learningLevel?.toUpperCase()}_LEARNER
+                  {(
+                    localProfile.learningLevel ||
+                    user.learningLevel ||
+                    'beginner'
+                  ).toUpperCase()}
+                  _LEARNER
                 </div>
               </div>
 
               <p className="text-base-content/60 font-mono text-sm mb-2">
-                {profile.email || 'your.email@example.com'}
+                {localProfile.email || user.email || 'your.email@example.com'}
               </p>
 
               <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-1 sm:space-y-0 text-xs font-mono text-base-content/60">
                 <div className="flex items-center justify-center sm:justify-start space-x-1">
                   <Calendar className="w-3 h-3" />
                   <span>
-                    Joined {new Date(profile.joinDate).toLocaleDateString()}
+                    Joined{' '}
+                    {user.createdAt
+                      ? new Date(user.createdAt).toLocaleDateString()
+                      : 'Recently'}
                   </span>
                 </div>
-                {profile.location && (
+                {(localProfile.location || user.location) && (
                   <div className="flex items-center justify-center sm:justify-start space-x-1">
                     <Globe className="w-3 h-3" />
-                    <span>{profile.location}</span>
+                    <span>{localProfile.location || user.location}</span>
                   </div>
                 )}
               </div>
@@ -130,15 +222,31 @@ const UserProfileSettings: React.FC<UserProfileSettingsProps> = ({
             <div>
               <label className="label">
                 <span className="label-text font-mono text-xs uppercase tracking-wide">
-                  Full_Name *
+                  First_Name *
                 </span>
               </label>
               <input
                 type="text"
-                value={profile.name}
-                onChange={(e) => handleInputChange('name', e.target.value)}
+                value={localProfile.firstName || ''}
+                onChange={(e) => handleInputChange('firstName', e.target.value)}
                 className="input input-bordered w-full font-mono"
-                placeholder="Enter your full name"
+                placeholder="Enter your first name"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="label">
+                <span className="label-text font-mono text-xs uppercase tracking-wide">
+                  Last_Name *
+                </span>
+              </label>
+              <input
+                type="text"
+                value={localProfile.lastName || ''}
+                onChange={(e) => handleInputChange('lastName', e.target.value)}
+                className="input input-bordered w-full font-mono"
+                placeholder="Enter your last name"
                 required
               />
             </div>
@@ -151,7 +259,7 @@ const UserProfileSettings: React.FC<UserProfileSettingsProps> = ({
               </label>
               <input
                 type="email"
-                value={profile.email}
+                value={localProfile.email || ''}
                 onChange={(e) => handleInputChange('email', e.target.value)}
                 className="input input-bordered w-full font-mono"
                 placeholder="your.email@example.com"
@@ -162,11 +270,60 @@ const UserProfileSettings: React.FC<UserProfileSettingsProps> = ({
             <div>
               <label className="label">
                 <span className="label-text font-mono text-xs uppercase tracking-wide">
+                  Timezone
+                </span>
+              </label>
+              <select
+                value={localProfile.timezone || 'America/New_York'}
+                onChange={(e) => handleInputChange('timezone', e.target.value)}
+                className="select select-bordered w-full font-mono"
+              >
+                {timezones.map((tz) => (
+                  <option key={tz.value} value={tz.value}>
+                    {tz.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="label">
+                <span className="label-text font-mono text-xs uppercase tracking-wide">
+                  Location (Optional)
+                </span>
+              </label>
+              <input
+                type="text"
+                value={localProfile.location || ''}
+                onChange={(e) => handleInputChange('location', e.target.value)}
+                className="input input-bordered w-full font-mono"
+                placeholder="City, Country"
+              />
+            </div>
+
+            <div>
+              <label className="label">
+                <span className="label-text font-mono text-xs uppercase tracking-wide">
+                  Phone_Number (Optional)
+                </span>
+              </label>
+              <input
+                type="tel"
+                value={localProfile.phone || ''}
+                onChange={(e) => handleInputChange('phone', e.target.value)}
+                className="input input-bordered w-full font-mono"
+                placeholder="+1 (555) 123-4567"
+              />
+            </div>
+
+            <div>
+              <label className="label">
+                <span className="label-text font-mono text-xs uppercase tracking-wide">
                   Learning_Level
                 </span>
               </label>
               <select
-                value={profile.learningLevel}
+                value={localProfile.learningLevel || 'beginner'}
                 onChange={(e) =>
                   handleInputChange('learningLevel', e.target.value)
                 }
@@ -187,7 +344,7 @@ const UserProfileSettings: React.FC<UserProfileSettingsProps> = ({
                 </span>
               </label>
               <select
-                value={profile.studyGoal}
+                value={localProfile.studyGoal || ''}
                 onChange={(e) => handleInputChange('studyGoal', e.target.value)}
                 className="select select-bordered w-full font-mono"
               >
@@ -199,40 +356,6 @@ const UserProfileSettings: React.FC<UserProfileSettingsProps> = ({
                 ))}
               </select>
             </div>
-
-            <div>
-              <label className="label">
-                <span className="label-text font-mono text-xs uppercase tracking-wide">
-                  Timezone
-                </span>
-              </label>
-              <select
-                value={profile.timezone}
-                onChange={(e) => handleInputChange('timezone', e.target.value)}
-                className="select select-bordered w-full font-mono"
-              >
-                {timezones.map((tz) => (
-                  <option key={tz.value} value={tz.value}>
-                    {tz.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="label">
-                <span className="label-text font-mono text-xs uppercase tracking-wide">
-                  Location (Optional)
-                </span>
-              </label>
-              <input
-                type="text"
-                value={profile.location}
-                onChange={(e) => handleInputChange('location', e.target.value)}
-                className="input input-bordered w-full font-mono"
-                placeholder="City, Country"
-              />
-            </div>
           </div>
 
           {/* Bio Section */}
@@ -243,7 +366,7 @@ const UserProfileSettings: React.FC<UserProfileSettingsProps> = ({
               </span>
             </label>
             <textarea
-              value={profile.bio}
+              value={localProfile.bio || ''}
               onChange={(e) => handleInputChange('bio', e.target.value)}
               className="textarea textarea-bordered w-full font-mono"
               rows={3}
@@ -251,8 +374,19 @@ const UserProfileSettings: React.FC<UserProfileSettingsProps> = ({
               maxLength={500}
             />
             <div className="text-right text-xs font-mono text-base-content/60 mt-1">
-              {profile.bio?.length || 0}/500 characters
+              {(localProfile.bio || '').length}/500 characters
             </div>
+          </div>
+
+          {/* Reset Form Button */}
+          <div className="flex justify-start pt-6 border-t border-base-300/50">
+            <button
+              onClick={handleResetChanges}
+              disabled={isLoading}
+              className="btn btn-ghost font-mono text-xs"
+            >
+              RESET_FORM
+            </button>
           </div>
         </div>
       </div>

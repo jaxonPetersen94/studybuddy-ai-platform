@@ -1,37 +1,43 @@
-import React, { useState } from 'react';
 import {
-  User,
-  Settings,
   Bell,
   Database,
-  Save,
-  Palette,
   Lock,
+  Palette,
+  Save,
+  Settings,
+  User as UserIcon,
 } from 'lucide-react';
+import React, { useState } from 'react';
+import UserAppearanceSettings from '../../components/userSettings/UserAppearanceSettings';
 import UserProfileSettings from '../../components/userSettings/UserProfileSettings';
 import UserSecuritySettings from '../../components/userSettings/UserSecuritySettings';
-import { UserProfile } from '../../types/userTypes';
+import { useThemeStore } from '../../stores/ThemeStore';
+import { useUserStore } from '../../stores/UserStore';
 import { PasswordState } from '../../types/authTypes';
+import {
+  AppearancePreferences,
+  ThemeMode,
+  User as UserProfile,
+} from '../../types/userTypes';
 
 const UserSettings: React.FC = () => {
   const [activeTab, setActiveTab] = useState('profile');
   const [isLoading, setIsLoading] = useState(false);
 
-  // Mock user profile data
-  const [userProfile, setUserProfile] = useState<UserProfile>({
-    name: 'Alex Chen',
-    email: 'alex.chen@email.com',
-    avatar: 'AC',
-    joinDate: '2024-01-15',
-    learningLevel: 'intermediate',
-    preferredSubjects: ['programming', 'mathematics'],
-    timezone: 'America/New_York',
-    location: 'New York, NY',
-    bio: 'Software developer passionate about learning new technologies and improving problem-solving skills.',
-    studyGoal: 'Professional Development',
-  });
+  const {
+    user,
+    updateProfile,
+    changePassword,
+    isLoading: userStoreLoading,
+  } = useUserStore();
 
-  // Separate password state for security settings
+  const { themeMode, setThemeMode } = useThemeStore();
+
+  // Local state to track pending theme changes
+  const [pendingThemeMode, setPendingThemeMode] = useState<ThemeMode | null>(
+    null,
+  );
+
   const [passwords, setPasswords] = useState<PasswordState>({
     currentPassword: '',
     newPassword: '',
@@ -43,8 +49,8 @@ const UserSettings: React.FC = () => {
     {
       id: 'profile',
       label: 'Profile',
-      icon: <User className="w-4 h-4" />,
-      description: 'Personal info, learning level, preferred subjects',
+      icon: <UserIcon className="w-4 h-4" />,
+      description: 'Personal info & learning level',
     },
     {
       id: 'security',
@@ -74,16 +80,124 @@ const UserSettings: React.FC = () => {
 
   const handleSave = async () => {
     setIsLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    setIsLoading(false);
+    try {
+      if (activeTab === 'security') {
+        // Handle password save if there are changes
+        if (
+          passwords.currentPassword &&
+          passwords.newPassword &&
+          passwords.confirmPassword
+        ) {
+          await handlePasswordSave(
+            passwords.currentPassword,
+            passwords.newPassword,
+          );
+        }
+      } else if (activeTab === 'appearance' && pendingThemeMode !== null) {
+        // Save pending theme changes to backend
+        await handleThemeSave(pendingThemeMode);
+      } else {
+        // Add any additional save logic here for other tabs
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+      }
+    } catch (error) {
+      console.error('Failed to save settings:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleProfileChange = (newProfile: UserProfile) => {
-    setUserProfile(newProfile);
+  const handleProfileChange = async (
+    newProfile: Partial<UserProfile>,
+  ): Promise<void> => {
+    try {
+      await updateProfile(newProfile);
+    } catch (error) {
+      console.error('Failed to update profile:', error);
+      // Re-throw to let the child component handle it
+      throw error;
+    }
   };
 
   const handlePasswordChange = (newPasswords: PasswordState) => {
     setPasswords(newPasswords);
+  };
+
+  const handlePasswordSave = async (
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<void> => {
+    try {
+      await changePassword(currentPassword, newPassword);
+
+      // Clear form on successful password change
+      setPasswords({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      });
+    } catch (error) {
+      // Error handling is done in the store with toast notifications
+      console.error('Password change failed:', error);
+      throw error; // Re-throw to let the component handle it
+    }
+  };
+
+  const handlePasswordReset = (): void => {
+    setPasswords({
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: '',
+    });
+  };
+
+  // Handle immediate theme change for UI preview (no backend save)
+  const handleThemeChange = (newThemeMode: ThemeMode) => {
+    // Update theme immediately for UI preview
+    setThemeMode(newThemeMode);
+    // Track pending change for later save
+    setPendingThemeMode(newThemeMode);
+  };
+
+  // Handle saving theme changes to backend
+  const handleThemeSave = async (themeMode: ThemeMode) => {
+    try {
+      const updatedSettings: AppearancePreferences = {
+        ...user?.preferences?.appearance,
+        themeMode: themeMode,
+      };
+
+      await handleAppearanceSettingsChange(updatedSettings);
+
+      // Clear pending changes after successful save
+      setPendingThemeMode(null);
+    } catch (error) {
+      console.error('Failed to save theme preference:', error);
+      throw error;
+    }
+  };
+
+  const handleAppearanceSettingsChange = async (
+    settings: AppearancePreferences,
+  ): Promise<void> => {
+    try {
+      // Update the user profile with new appearance settings
+      const updatedProfile: Partial<UserProfile> = {
+        preferences: {
+          ...user?.preferences,
+          appearance: settings,
+        },
+      };
+
+      await updateProfile(updatedProfile);
+    } catch (error) {
+      console.error('Failed to save appearance settings:', error);
+      throw error;
+    }
+  };
+
+  const getCurrentThemeMode = (): ThemeMode => {
+    return themeMode;
   };
 
   const renderTabContent = () => {
@@ -91,7 +205,8 @@ const UserSettings: React.FC = () => {
       case 'profile':
         return (
           <UserProfileSettings
-            profile={userProfile}
+            user={user}
+            isLoading={userStoreLoading}
             onProfileChange={handleProfileChange}
           />
         );
@@ -101,6 +216,19 @@ const UserSettings: React.FC = () => {
           <UserSecuritySettings
             passwords={passwords}
             onPasswordChange={handlePasswordChange}
+            onPasswordSave={handlePasswordSave}
+            onPasswordReset={handlePasswordReset}
+            isLoading={userStoreLoading}
+          />
+        );
+
+      case 'appearance':
+        return (
+          <UserAppearanceSettings
+            isLoading={userStoreLoading}
+            currentThemeMode={getCurrentThemeMode()}
+            userAppearanceSettings={user?.preferences?.appearance}
+            onThemeChange={handleThemeChange}
           />
         );
 
@@ -122,31 +250,6 @@ const UserSettings: React.FC = () => {
                   - System updates and feature announcements // - Email vs push
                   notification preferences // - Quiet hours and do-not-disturb
                   settings
-                </p>
-              </div>
-            </div>
-          </div>
-        );
-
-      case 'appearance':
-        return (
-          <div className="space-y-6">
-            <div className="card bg-base-200/80 backdrop-blur-xl border border-base-300/50 shadow-lg">
-              <div className="bg-base-300/30 border-b border-base-300/50 px-6 py-4">
-                <h2 className="font-mono text-sm uppercase tracking-wide text-base-content">
-                  Appearance_&_Accessibility
-                </h2>
-              </div>
-              <div className="card-body p-6">
-                <p className="font-mono text-sm text-base-content/60">
-                  // AppearanceSettings component will be implemented here // -
-                  Theme selection (light, dark, auto, custom themes) // - Color
-                  scheme and accent colors // - Font size and typography
-                  preferences // - Interface density (compact, comfortable,
-                  spacious) // - Animation and motion preferences // -
-                  Accessibility features (high contrast, screen reader support)
-                  // - Language and localization settings // - Layout
-                  preferences (sidebar position, card styles)
                 </p>
               </div>
             </div>
@@ -181,6 +284,19 @@ const UserSettings: React.FC = () => {
         return <div>Section not found</div>;
     }
   };
+
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="loading loading-spinner loading-lg"></div>
+          <p className="font-mono text-sm text-base-content/60">
+            Loading user data...
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen p-6 max-w-7xl mx-auto">

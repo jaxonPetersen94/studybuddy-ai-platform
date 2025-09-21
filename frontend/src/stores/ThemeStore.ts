@@ -1,100 +1,118 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { ThemeMode } from '../types/userTypes';
 
-type Theme = 'StudyBuddy' | 'StudyBuddy-Dark';
+type DaisyUITheme = 'StudyBuddy' | 'StudyBuddy-Dark';
 
 interface ThemeStore {
-  theme: Theme;
+  // User-facing theme mode
+  themeMode: ThemeMode;
+
+  // Internal DaisyUI theme name
+  currentTheme: DaisyUITheme;
+
+  // Computed state
   isDarkMode: boolean;
-  followSystemTheme: boolean;
-  setTheme: (theme: Theme) => void;
-  toggleTheme: () => void;
-  setFollowSystemTheme: (follow: boolean) => void;
+
+  // Actions
+  setThemeMode: (mode: ThemeMode) => void;
+
+  // Internal methods
+  updateSystemTheme: () => void;
 }
 
-const applyTheme = (theme: Theme) => {
+const applyTheme = (theme: DaisyUITheme) => {
   document.documentElement.setAttribute('data-theme', theme);
 };
 
-const isDarkTheme = (theme: Theme): boolean => {
-  return theme.includes('Dark');
+const getThemeFromMode = (
+  mode: ThemeMode,
+  systemPrefersDark: boolean,
+): DaisyUITheme => {
+  switch (mode) {
+    case 'light':
+      return 'StudyBuddy';
+    case 'dark':
+      return 'StudyBuddy-Dark';
+    case 'auto':
+      return systemPrefersDark ? 'StudyBuddy-Dark' : 'StudyBuddy';
+    default:
+      return 'StudyBuddy';
+  }
+};
+
+const isDarkTheme = (theme: DaisyUITheme): boolean => {
+  return theme === 'StudyBuddy-Dark';
 };
 
 export const useThemeStore = create<ThemeStore>()(
   persist(
     (set, get) => ({
       // Initial state
-      theme: 'StudyBuddy',
+      themeMode: 'auto',
+      currentTheme: 'StudyBuddy',
       isDarkMode: false,
-      followSystemTheme: true,
 
-      // Actions
-      setTheme: (theme) => {
-        const isDark = isDarkTheme(theme);
-        set({ theme, isDarkMode: isDark });
-        applyTheme(theme);
+      // Set theme mode (user preference)
+      setThemeMode: (mode: ThemeMode) => {
+        const systemPrefersDark = window.matchMedia(
+          '(prefers-color-scheme: dark)',
+        ).matches;
+        const newTheme = getThemeFromMode(mode, systemPrefersDark);
+        const isDark = isDarkTheme(newTheme);
+
+        set({
+          themeMode: mode,
+          currentTheme: newTheme,
+          isDarkMode: isDark,
+        });
+        applyTheme(newTheme);
       },
 
-      toggleTheme: () => {
-        const current = get().theme;
-        const newTheme =
-          current === 'StudyBuddy' ? 'StudyBuddy-Dark' : 'StudyBuddy';
-
-        // When user manually toggles, stop following system theme
-        set({ followSystemTheme: false });
-        get().setTheme(newTheme);
-      },
-
-      setFollowSystemTheme: (follow) => {
-        set({ followSystemTheme: follow });
-
-        if (follow) {
-          const prefersDark = window.matchMedia(
+      // Update theme when system preference changes (only if mode is 'auto')
+      updateSystemTheme: () => {
+        const { themeMode } = get();
+        if (themeMode === 'auto') {
+          const systemPrefersDark = window.matchMedia(
             '(prefers-color-scheme: dark)',
           ).matches;
-          const theme = prefersDark ? 'StudyBuddy-Dark' : 'StudyBuddy';
-          get().setTheme(theme);
+          const newTheme = getThemeFromMode('auto', systemPrefersDark);
+          const isDark = isDarkTheme(newTheme);
+
+          set({
+            currentTheme: newTheme,
+            isDarkMode: isDark,
+          });
+          applyTheme(newTheme);
         }
       },
     }),
     {
       name: 'theme-preferences',
       partialize: (state) => ({
-        theme: state.theme,
-        followSystemTheme: state.followSystemTheme,
+        themeMode: state.themeMode,
       }),
     },
   ),
 );
 
-export const initializeTheme = (): void => {
-  const { theme, followSystemTheme, setTheme } = useThemeStore.getState();
+export const initializeTheme = (): (() => void) => {
+  const { themeMode, setThemeMode, updateSystemTheme } =
+    useThemeStore.getState();
 
-  // Apply stored theme immediately and ensure isDarkMode is in sync
-  applyTheme(theme);
-  useThemeStore.setState({ isDarkMode: isDarkTheme(theme) });
+  // Apply the current theme mode
+  setThemeMode(themeMode);
 
-  // Only override saved theme if user wants to follow system AND it's different
-  if (followSystemTheme) {
-    const prefersDark = window.matchMedia(
-      '(prefers-color-scheme: dark)',
-    ).matches;
-    const expectedTheme = prefersDark ? 'StudyBuddy-Dark' : 'StudyBuddy';
+  // Listen for system theme changes
+  const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+  const themeChangeHandler = () => {
+    updateSystemTheme();
+  };
 
-    if (theme !== expectedTheme) {
-      setTheme(expectedTheme);
-    }
+  darkModeMediaQuery.addEventListener('change', themeChangeHandler);
 
-    // Listen for system theme changes
-    const darkModeMediaQuery = window.matchMedia(
-      '(prefers-color-scheme: dark)',
-    );
-    const themeChangeHandler = (e: MediaQueryListEvent) => {
-      if (useThemeStore.getState().followSystemTheme) {
-        setTheme(e.matches ? 'StudyBuddy-Dark' : 'StudyBuddy');
-      }
-    };
-
-    darkModeMediaQuery.addEventListener('change', themeChangeHandler);
-  }
+  // Return cleanup function
+  return () => {
+    darkModeMediaQuery.removeEventListener('change', themeChangeHandler);
+  };
 };

@@ -3,6 +3,93 @@ export interface PasswordStrength {
   color: 'error' | 'warning' | 'success';
 }
 
+// ============================================
+// PASSWORD REQUIREMENTS CONFIGURATION
+// ============================================
+
+export interface PasswordRequirement {
+  id: string;
+  label: string;
+  test: (password: string) => boolean;
+  required: boolean;
+}
+
+export const PASSWORD_REQUIREMENTS: PasswordRequirement[] = [
+  {
+    id: 'length',
+    label: 'At least 8 characters long',
+    test: (password: string) => password.length >= 8,
+    required: true,
+  },
+  {
+    id: 'lowercase',
+    label: 'Contains lowercase letters',
+    test: (password: string) => /[a-z]/.test(password),
+    required: true,
+  },
+  {
+    id: 'uppercase',
+    label: 'Contains uppercase letters',
+    test: (password: string) => /[A-Z]/.test(password),
+    required: true,
+  },
+  {
+    id: 'numbers',
+    label: 'Contains numbers',
+    test: (password: string) => /\d/.test(password),
+    required: true,
+  },
+  {
+    id: 'special',
+    label: 'Contains special characters (recommended)',
+    test: (password: string) =>
+      /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password),
+    required: false,
+  },
+];
+
+// ============================================
+// ENHANCED PASSWORD VALIDATION
+// ============================================
+
+export interface PasswordRequirementCheck {
+  id: string;
+  label: string;
+  isMet: boolean;
+  isRequired: boolean;
+}
+
+/**
+ * Checks which password requirements are met
+ * @param password - Password string to check
+ * @returns Array of requirement checks
+ */
+export const checkPasswordRequirements = (
+  password: string,
+): PasswordRequirementCheck[] => {
+  return PASSWORD_REQUIREMENTS.map((requirement) => ({
+    id: requirement.id,
+    label: requirement.label,
+    isMet: requirement.test(password),
+    isRequired: requirement.required,
+  }));
+};
+
+/**
+ * Gets unmet required password requirements
+ * @param password - Password string to check
+ * @returns Array of unmet required requirements
+ */
+export const getUnmetRequirements = (password: string): string[] => {
+  return checkPasswordRequirements(password)
+    .filter((req) => req.isRequired && !req.isMet)
+    .map((req) => req.label);
+};
+
+// ============================================
+// EXISTING VALIDATION FUNCTIONS
+// ============================================
+
 /**
  * Validates email format using regex
  * @param email - Email string to validate
