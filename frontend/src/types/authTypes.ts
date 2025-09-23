@@ -1,8 +1,5 @@
+import { ApiResponse } from './apiTypes';
 import { User, UserRole, LearningLevel } from './userTypes';
-
-// ============================================
-// AUTHENTICATION REQUEST DATA
-// ============================================
 
 export interface LoginData {
   email: string;
@@ -38,10 +35,6 @@ export interface RefreshTokenData {
   refreshToken: string;
 }
 
-// ============================================
-// PROFILE UPDATE DATA
-// ============================================
-
 export interface UpdateProfileData {
   firstName?: string;
   lastName?: string;
@@ -55,10 +48,6 @@ export interface UpdateProfileData {
   studyGoal?: string;
 }
 
-// ============================================
-// TOKEN INTERFACES
-// ============================================
-
 export interface AuthResponseTokens {
   accessToken: string;
   refreshToken: string;
@@ -71,20 +60,17 @@ export interface AuthTokens {
   expiresAt: number;
 }
 
-// ============================================
-// API RESPONSE INTERFACES
-// ============================================
-
 export interface AuthResponse {
   user: User;
   tokens: AuthResponseTokens;
   message?: string;
 }
 
-export interface ForgotPasswordResponse {
+export interface ForgotPasswordData {
   success: boolean;
-  message: string;
 }
+
+export type ForgotPasswordResponse = ApiResponse<ForgotPasswordData>;
 
 export interface ResetPasswordResponse {
   success: boolean;
@@ -100,10 +86,6 @@ export interface UpdateProfileResponse {
   user: User;
   message: string;
 }
-
-// ============================================
-// FORM DATA INTERFACES
-// ============================================
 
 export interface LoginFormData extends LoginData {
   rememberMe?: boolean;
@@ -122,10 +104,6 @@ export interface PasswordState {
 
 export type PasswordField = keyof PasswordState;
 
-// ============================================
-// STATE MANAGEMENT
-// ============================================
-
 export interface AuthState {
   user: User | null;
   tokens: AuthTokens | null;
@@ -142,10 +120,6 @@ export type AuthAction =
   | { type: 'REFRESH_TOKEN_SUCCESS'; payload: AuthTokens }
   | { type: 'UPDATE_USER'; payload: User }
   | { type: 'CLEAR_ERROR' };
-
-// ============================================
-// COMPONENT INTERFACES
-// ============================================
 
 export interface ProtectedRouteProps {
   children: React.ReactNode;

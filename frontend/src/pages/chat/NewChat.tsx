@@ -1,57 +1,26 @@
 import React, { useState } from 'react';
 import {
-  Brain,
   BookOpen,
-  Target,
-  Lightbulb,
+  Brain,
+  Calculator,
+  Clock,
   Code,
   FileText,
-  Calculator,
-  Microscope,
   Languages,
-  TrendingUp,
+  Lightbulb,
   MessageSquare,
-  Clock,
+  Microscope,
   Star,
+  Target,
+  TrendingUp,
 } from 'lucide-react';
-import SidebarComponent from '../../components/layout/Sidebar';
-import ChatInput from '../../components/chat/ChatInput';
 import ChatBubble from '../../components/chat/ChatBubble';
-import SubjectCard from '../../components/ui/SubjectCard';
+import ChatInput from '../../components/chat/ChatInput';
+import SidebarComponent from '../../components/layout/Sidebar';
 import PillButton from '../../components/ui/PillButton';
-
-interface QuickAction {
-  id: string;
-  title: string;
-  description: string;
-  icon: React.ReactNode;
-  category: 'study' | 'practice' | 'create' | 'analyze';
-  prompt: string;
-}
-
-interface Subject {
-  id: string;
-  name: string;
-  icon: React.ReactNode;
-  color: string;
-  description: string;
-}
-
-interface ChatSession {
-  id: string;
-  title: string;
-  lastMessage: string;
-  timestamp: Date;
-  isStarred: boolean;
-}
-
-interface ChatMessage {
-  id: string;
-  message: string;
-  isUser: boolean;
-  timestamp: Date;
-  isTyping?: boolean;
-}
+import SubjectCard from '../../components/ui/SubjectCard';
+import { ChatMessage, ChatSession } from '../../types/chatTypes';
+import { QuickAction, Subject } from '../../types/uiTypes';
 
 const NewChat: React.FC = () => {
   const [userText, setUserText] = useState('');
@@ -79,6 +48,7 @@ const NewChat: React.FC = () => {
       lastMessage: 'Can you explain useEffect dependencies?',
       timestamp: new Date(Date.now() - 1000 * 60 * 30), // 30 minutes ago
       isStarred: true,
+      messageCount: 12,
     },
     {
       id: '2',
@@ -86,6 +56,7 @@ const NewChat: React.FC = () => {
       lastMessage: 'Create a derivatives practice quiz',
       timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
       isStarred: false,
+      messageCount: 8,
     },
     {
       id: '3',
@@ -93,6 +64,7 @@ const NewChat: React.FC = () => {
       lastMessage: "Let's practice ordering food in Spanish",
       timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
       isStarred: false,
+      messageCount: 15,
     },
   ];
 

@@ -1,14 +1,6 @@
-// ============================================
-// ENUMS AND TYPES
-// ============================================
-
 export type UserRole = 'admin' | 'user';
 export type LearningLevel = 'beginner' | 'intermediate' | 'advanced';
 export type ThemeMode = 'light' | 'dark' | 'auto';
-
-// ============================================
-// PREFERENCE INTERFACES
-// ============================================
 
 export interface AppearancePreferences {
   themeMode?: ThemeMode;
@@ -27,10 +19,6 @@ export interface UserPreferences {
   timezone?: string;
 }
 
-// ============================================
-// CORE USER INTERFACE
-// ============================================
-
 export interface User {
   id: string;
   email: string;
@@ -43,21 +31,13 @@ export interface User {
   createdAt: string;
   updatedAt?: string;
   lastLoginAt?: string;
-
-  // Profile fields
   learningLevel?: LearningLevel;
   timezone?: string;
   location?: string;
   bio?: string;
   studyGoal?: string;
-
-  // User preferences
   preferences?: UserPreferences;
 }
-
-// ============================================
-// UPDATE INTERFACES
-// ============================================
 
 export interface UpdateUserData {
   firstName?: string;
@@ -77,21 +57,14 @@ export interface UpdateProfileResponse {
   message: string;
 }
 
-// ============================================
-// HELPER TYPES
-// ============================================
-
-// Type for profile-specific fields only
 export type UserProfileFields = Pick<
   User,
   'learningLevel' | 'timezone' | 'location' | 'bio' | 'studyGoal'
 >;
 
-// Type for basic user info
 export type UserBasicInfo = Pick<
   User,
   'id' | 'email' | 'firstName' | 'lastName' | 'avatar' | 'role'
 >;
 
-// Type for data management settings specifically
 export type UserDataSettings = DataPreferences;

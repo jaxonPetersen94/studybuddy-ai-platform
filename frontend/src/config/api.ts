@@ -24,6 +24,51 @@ export const API_ENDPOINTS = {
     PREFERENCES: buildPath('users', 'preferences'),
     CHANGE_PASSWORD: buildPath('users', 'change-password'),
   },
+  CHAT: {
+    // Session management
+    SESSIONS: buildPath('chats', 'sessions'),
+    SESSION_BY_ID: (sessionId: string) =>
+      `${buildPath('chats', 'sessions')}/${sessionId}`,
+
+    // Message management
+    MESSAGES: buildPath('chats', 'messages'),
+    SESSION_MESSAGES: (sessionId: string) =>
+      `${buildPath('chats', 'sessions')}/${sessionId}/messages`,
+    MESSAGE_BY_ID: (messageId: string) =>
+      `${buildPath('chats', 'messages')}/${messageId}`,
+    REGENERATE_MESSAGE: (messageId: string) =>
+      `${buildPath('chats', 'messages')}/${messageId}/regenerate`,
+    MESSAGE_FEEDBACK: (messageId: string) =>
+      `${buildPath('chats', 'messages')}/${messageId}/feedback`,
+
+    // Streaming
+    STREAM_MESSAGE: buildPath('chats', 'messages/stream'),
+
+    // File attachments
+    ATTACHMENTS: buildPath('chats', 'attachments'),
+    ATTACHMENT_BY_ID: (attachmentId: string) =>
+      `${buildPath('chats', 'attachments')}/${attachmentId}`,
+
+    // Search functionality
+    SEARCH_SESSIONS: buildPath('chats', 'sessions/search'),
+    SEARCH_MESSAGES: (sessionId: string) =>
+      `${buildPath('chats', 'sessions')}/${sessionId}/messages/search`,
+
+    // Session actions
+    STAR_SESSION: (sessionId: string) =>
+      `${buildPath('chats', 'sessions')}/${sessionId}/star`,
+    UNSTAR_SESSION: (sessionId: string) =>
+      `${buildPath('chats', 'sessions')}/${sessionId}/unstar`,
+
+    // Bulk operations (if needed)
+    BULK_DELETE_SESSIONS: buildPath('chats', 'sessions/bulk-delete'),
+    BULK_DELETE_MESSAGES: buildPath('chats', 'messages/bulk-delete'),
+
+    // Analytics/Usage (if you plan to track usage)
+    SESSION_ANALYTICS: (sessionId: string) =>
+      `${buildPath('chats', 'sessions')}/${sessionId}/analytics`,
+    USER_CHAT_STATS: buildPath('chats', 'stats'),
+  },
 } as const;
 
 export const buildApiUrl = (endpoint: string): string =>
@@ -32,3 +77,4 @@ export const buildApiUrl = (endpoint: string): string =>
 export type ApiEndpoints = typeof API_ENDPOINTS;
 export type AuthEndpoints = typeof API_ENDPOINTS.AUTH;
 export type UserEndpoints = typeof API_ENDPOINTS.USER;
+export type ChatEndpoints = typeof API_ENDPOINTS.CHAT;
