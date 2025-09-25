@@ -1,4 +1,6 @@
 from contextlib import asynccontextmanager
+from datetime import datetime
+import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -84,8 +86,8 @@ async def root():
     }
 
 
-if __name__ == "__main__":
-    import uvicorn
+def main():
+    """Entry point for the poetry script"""
     uvicorn.run(
         "app.main:app",
         host=settings.host,
@@ -93,3 +95,7 @@ if __name__ == "__main__":
         reload=settings.debug,
         log_level=settings.log_level.lower()
     )
+
+
+if __name__ == "__main__":
+    main()
