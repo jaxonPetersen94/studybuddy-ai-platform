@@ -28,7 +28,11 @@ studybuddy-ai-platform/
 │   │   ├── src/
 │   │   ├── Dockerfile
 │   │   └── package.json
-│   ├── ai-service/          # AI processing service (planned)
+│   ├── ai-service/          # AI processing service (Python FastAPI)
+│   │   ├── app/
+│   │   ├── logs/
+│   │   ├── Dockerfile
+│   │   └── pyproject.toml
 │   └── document-service/    # Document processing (planned)
 ├── docker-compose.yml       # Production deployment
 ├── docker-compose.dev.yml   # Development containers
@@ -69,17 +73,23 @@ studybuddy-ai-platform/
 - Redis for caching (planned)
 - WebSocket for real-time features (planned)
 
-**AI Integration** (Planned)
+**AI Integration**
 
-- OpenAI GPT integration
-- Google Gemini API
-- Python FastAPI for AI services
+- Python 3.13+ with FastAPI for AI services
+- Poetry for dependency management and project scripts
+- OpenAI GPT integration (planned)
+- Google Gemini API (planned)
+- Pydantic for data validation and settings management
+- Structured logging with structlog
+- Uvicorn ASGI server with standard extras
 
 ## 🚀 Getting Started
 
 ### Prerequisites
 
 - Node.js 18+ installed
+- Python 3.13+ installed
+- Poetry installed for Python dependency management
 - Docker Desktop running
 - npm or yarn package manager
 
@@ -98,6 +108,7 @@ This will start:
 - Frontend at `http://localhost:3000` (Main StudyBuddy interface)
 - API Gateway at `http://localhost:3001`
 - User Service at `http://localhost:5001`
+- AI Service at `http://localhost:3003` (Python FastAPI)
 - PostgreSQL database with health checks
 
 ### Local Development Setup
@@ -138,7 +149,15 @@ This will start:
    npm run dev
    ```
 
-5. **Start the Frontend**
+5. **Start the AI Service**
+
+   ```bash
+   cd services/ai-service
+   poetry install
+   poetry run ai-service
+   ```
+
+6. **Start the Frontend**
 
    ```bash
    cd frontend
@@ -178,6 +197,19 @@ SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USER=your-email@gmail.com
 SMTP_PASS=your-app-password
+```
+
+**AI Service (.env)**
+
+```
+HOST=0.0.0.0
+PORT=3003
+ENVIRONMENT=development
+DEBUG=true
+LOG_LEVEL=DEBUG
+CORS_ORIGINS=["http://localhost:3000","http://localhost:3001"]
+OPENAI_API_KEY=your-openai-api-key
+GEMINI_API_KEY=your-gemini-api-key
 ```
 
 ### Database Access
@@ -227,6 +259,7 @@ docker-compose -f docker-compose.dev.yml up -d
 # Run services individually with hot reload
 cd services/api-gateway && npm run dev
 cd services/user-service && npm run dev
+cd services/ai-service && poetry run ai-service
 cd frontend && npm run dev
 ```
 
@@ -255,6 +288,13 @@ cd frontend && npm run dev
 - `npm run migration:revert` - Revert last migration
 - `npm run schema:drop` - Drop database schema
 
+**AI Service**
+
+- `poetry install` - Install dependencies
+- `poetry run ai-service` - Start FastAPI development server
+- `poetry run pytest` - Run tests (requires dev dependencies)
+- `poetry install --with dev` - Install with development dependencies
+
 ### Testing
 
 ```bash
@@ -265,6 +305,11 @@ cd frontend && npm run lint
 cd services/user-service
 npm run migration:generate src/migrations/MigrationName
 npm run migration:run
+
+# AI service tests
+cd services/ai-service
+poetry install --with dev
+poetry run pytest
 ```
 
 ## 📋 Roadmap
@@ -280,10 +325,12 @@ npm run migration:run
 - [x] API Gateway implementation
 - [x] User service with authentication
 - [x] Database setup with Docker
+- [x] AI service foundation with Python FastAPI and Poetry
 
 ### Phase 2: AI Integration 🚧
 
 - [ ] OpenAI API integration for chat responses
+- [ ] Google Gemini API integration
 - [ ] Real-time AI processing for study materials
 - [ ] Context-aware responses based on selected subjects
 - [ ] File upload processing for documents and images
@@ -314,6 +361,7 @@ This project demonstrates:
 - **Production-Ready Architecture**: Complete Docker containerization with health checks
 - **Microservices Design**: Proper service separation with API Gateway pattern
 - **Educational Technology**: Practical application of AI for personalized learning experiences
+- **Multi-Language Backend**: Node.js services with Python AI processing
 - **User Experience Focus**: Multi-modal input support and responsive design
 - **Database Architecture**: Multi-database setup with service isolation
 - **DevOps Best Practices**: Development and production environments with dependency management
