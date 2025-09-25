@@ -1,5 +1,6 @@
 import express, { Request, Response } from 'express';
 import userRoutes from './userRoutes';
+import chatRoutes from './chatRoutes';
 
 const router = express.Router();
 
@@ -21,6 +22,7 @@ router.get('/', (_req: Request, res: Response) => {
     endpoints: {
       health: '/api/health',
       users: '/api/v1/users/*',
+      chats: '/api/v1/chats/*',
     },
     documentation: 'https://github.com/jaxonPetersen94/studybuddy-ai-platform',
   });
@@ -28,6 +30,9 @@ router.get('/', (_req: Request, res: Response) => {
 
 // User service routes
 router.use('/api/v1/users', userRoutes);
+
+// Chat service routes
+router.use('/api/v1/chats', chatRoutes);
 
 // Catch-all for undefined routes - using .use() without a path
 router.use((req: Request, res: Response) => {
@@ -42,6 +47,11 @@ router.use((req: Request, res: Response) => {
       'GET /api/v1/users/profile',
       'PUT /api/v1/users/profile',
       'DELETE /api/v1/users/profile',
+      'GET /api/v1/chats/sessions',
+      'POST /api/v1/chats/sessions',
+      'POST /api/v1/chats/messages',
+      'POST /api/v1/chats/messages/stream',
+      'GET /api/v1/chats/sessions/:sessionId/messages',
     ],
   });
 });

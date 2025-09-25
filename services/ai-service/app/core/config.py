@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     app_version: str = "0.1.0"
     debug: bool = Field(default=False, alias="DEBUG")
     host: str = Field(default="0.0.0.0", alias="HOST")
-    port: int = Field(default=3003, alias="PORT")
+    port: int = Field(default=5002, alias="PORT")
     
     # Environment
     environment: str = Field(default="development", alias="ENVIRONMENT")

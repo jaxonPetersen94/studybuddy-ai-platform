@@ -108,7 +108,7 @@ This will start:
 - Frontend at `http://localhost:3000` (Main StudyBuddy interface)
 - API Gateway at `http://localhost:3001`
 - User Service at `http://localhost:5001`
-- AI Service at `http://localhost:3003` (Python FastAPI)
+- AI Service at `http://localhost:5002` (Python FastAPI)
 - PostgreSQL database with health checks
 
 ### Local Development Setup
@@ -190,7 +190,7 @@ RATE_LIMIT_MAX_REQUESTS=100
 **User Service (.env)**
 
 ```
-PORT=3002
+PORT=5001
 DATABASE_URL=postgresql://postgres:your_password@localhost:5432/studybuddy_users
 JWT_SECRET=your-jwt-secret
 SMTP_HOST=smtp.gmail.com
@@ -203,7 +203,7 @@ SMTP_PASS=your-app-password
 
 ```
 HOST=0.0.0.0
-PORT=3003
+PORT=5002
 ENVIRONMENT=development
 DEBUG=true
 LOG_LEVEL=DEBUG
