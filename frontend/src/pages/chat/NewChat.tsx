@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect } from 'react';
 import {
   BookOpen,
   Brain,
@@ -19,54 +19,43 @@ import ChatInput from '../../components/chat/ChatInput';
 import SidebarComponent from '../../components/layout/Sidebar';
 import PillButton from '../../components/ui/PillButton';
 import SubjectCard from '../../components/ui/SubjectCard';
-import { ChatMessage, ChatSession } from '../../types/chatTypes';
+import { useChatStore } from '../../stores/ChatStore';
 import { QuickAction, Subject } from '../../types/uiTypes';
 
 const NewChat: React.FC = () => {
-  const [userText, setUserText] = useState('');
-  const [selectedAction, setSelectedAction] = useState<QuickAction | null>(
-    null,
-  );
-  const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
-  const [isTyping, setIsTyping] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  // Get state and actions from the store
+  const {
+    // State
+    currentSession,
+    currentMessages,
+    hasStartedChat,
+    sessions,
+    isTyping,
+    selectedSubject,
+    selectedAction,
+    userText,
+    isSending,
+    error,
 
-  // State for managing the abrupt transition
-  const [hasStartedChat, setHasStartedChat] = useState(false);
+    // Actions
+    sendMessage,
+    loadSessions,
+    setUserText,
+    setSelectedSubject,
+    setSelectedAction,
+    handleCopyMessage,
+    handleLikeMessage,
+    handleDislikeMessage,
+    handleRegenerateMessage,
+    resetChat,
+  } = useChatStore();
 
-  // Compute the full message by combining action prompt + user text
-  const message = selectedAction
-    ? selectedAction.prompt + ' ' + userText
-    : userText;
+  const [sidebarOpen, setSidebarOpen] = React.useState(false);
 
-  // Mock chat sessions for sidebar
-  const chatSessions: ChatSession[] = [
-    {
-      id: '1',
-      title: 'React Hooks Tutorial',
-      lastMessage: 'Can you explain useEffect dependencies?',
-      timestamp: new Date(Date.now() - 1000 * 60 * 30), // 30 minutes ago
-      isStarred: true,
-      messageCount: 12,
-    },
-    {
-      id: '2',
-      title: 'Calculus Study Guide',
-      lastMessage: 'Create a derivatives practice quiz',
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
-      isStarred: false,
-      messageCount: 8,
-    },
-    {
-      id: '3',
-      title: 'Spanish Conversation',
-      lastMessage: "Let's practice ordering food in Spanish",
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
-      isStarred: false,
-      messageCount: 15,
-    },
-  ];
+  // Load sessions on component mount
+  useEffect(() => {
+    loadSessions();
+  }, [loadSessions]);
 
   // Learning-focused subjects
   const subjects: Subject[] = [
@@ -166,70 +155,53 @@ const NewChat: React.FC = () => {
     },
   ];
 
-  const formatTimestamp = (date: Date) => {
+  const formatTimestamp = (date: Date | string | number) => {
+    // Ensure date is a Date object
+    const dateObj = date instanceof Date ? date : new Date(date);
+
+    // Check if the date is valid
+    if (isNaN(dateObj.getTime())) {
+      console.error('Invalid date provided to formatTimestamp:', date);
+      return 'Invalid date';
+    }
+
     const now = new Date();
     const diffInHours = Math.floor(
-      (now.getTime() - date.getTime()) / (1000 * 60 * 60),
+      (now.getTime() - dateObj.getTime()) / (1000 * 60 * 60),
     );
 
     if (diffInHours < 1) return 'Just now';
     if (diffInHours < 24) return `${diffInHours}h ago`;
     if (diffInHours < 168) return `${Math.floor(diffInHours / 24)}d ago`;
-    return date.toLocaleDateString();
+    return dateObj.toLocaleDateString();
   };
 
-  const handleSendMessage = () => {
-    if (!message.trim()) return;
+  // Compute the full message by combining action prompt + user text
+  const message = selectedAction
+    ? selectedAction.prompt + ' ' + userText
+    : userText;
 
-    // Add user message to chat
-    const userMessage: ChatMessage = {
-      id: Date.now().toString(),
-      message: message.trim(),
-      isUser: true,
-      timestamp: new Date(),
-    };
+  const handleSendMessage = async () => {
+    if (!message.trim() || isSending) return;
 
-    setMessages((prev) => [...prev, userMessage]);
-
-    // Immediately switch to chat mode and start typing
-    setHasStartedChat(true);
-    setIsTyping(true);
-
-    // Add typing indicator for bot
-    const typingMessage: ChatMessage = {
-      id: 'typing',
-      message: '',
-      isUser: false,
-      timestamp: new Date(),
-      isTyping: true,
-    };
-
-    setMessages((prev) => [...prev, typingMessage]);
-
-    // Simulate bot response after 2 seconds
-    setTimeout(() => {
-      setIsTyping(false);
-
-      // Remove typing indicator and add bot response
-      setMessages((prev) => {
-        const withoutTyping = prev.filter((msg) => msg.id !== 'typing');
-        const botResponse: ChatMessage = {
-          id: (Date.now() + 1).toString(),
-          message: `I understand you'd like help with: "${message.trim()}". Let me assist you with that!`,
-          isUser: false,
-          timestamp: new Date(),
-        };
-        return [...withoutTyping, botResponse];
+    try {
+      await sendMessage({
+        message: message.trim(),
+        subject: selectedSubject || undefined,
+        quickAction: selectedAction?.id || undefined,
       });
-    }, 2000);
 
-    // Clear both user text and selected action
-    setUserText('');
-    setSelectedAction(null);
+      // Clear input after successful send
+      setUserText('');
+      setSelectedAction(null);
+    } catch (error) {
+      // Error handling is done in the store
+      console.error('Failed to send message:', error);
+    }
   };
 
   const handleQuickAction = (action: QuickAction) => {
-    setSelectedAction(action);
+    setSelectedAction(selectedAction?.id === action.id ? null : action);
   };
 
   const handleMessageChange = (newMessage: string) => {
@@ -260,24 +232,9 @@ const NewChat: React.FC = () => {
     return 'Ask me anything, upload a file, or describe what you want to study...';
   };
 
-  const handleCopyMessage = (messageText: string) => {
-    navigator.clipboard.writeText(messageText);
-    // You could add a toast notification here
-  };
-
-  const handleLikeMessage = (messageId: string) => {
-    // Handle like functionality
-    console.log('Liked message:', messageId);
-  };
-
-  const handleDislikeMessage = (messageId: string) => {
-    // Handle dislike functionality
-    console.log('Disliked message:', messageId);
-  };
-
-  const handleRegenerateMessage = (messageId: string) => {
-    // Handle regenerate functionality
-    console.log('Regenerate message:', messageId);
+  const handleNewChat = () => {
+    resetChat();
+    setSidebarOpen(false);
   };
 
   return (
@@ -290,7 +247,10 @@ const NewChat: React.FC = () => {
         headerHeight={69}
       >
         <div className="p-4">
-          <button className="w-full btn btn-primary mb-4 flex items-center justify-center space-x-2">
+          <button
+            className="w-full btn btn-primary mb-4 flex items-center justify-center space-x-2"
+            onClick={handleNewChat}
+          >
             <MessageSquare className="w-4 h-4" />
             <span>New Chat</span>
           </button>
@@ -299,7 +259,7 @@ const NewChat: React.FC = () => {
             <div className="text-xs font-mono text-base-content/60 uppercase tracking-wide mb-2">
               Recent Sessions
             </div>
-            {chatSessions.map((session) => (
+            {sessions.map((session) => (
               <div
                 key={session.id}
                 className="p-3 rounded-lg border border-base-300/50 bg-base-100/50 hover:bg-base-200/50 transition-colors cursor-pointer group"
@@ -339,7 +299,7 @@ const NewChat: React.FC = () => {
         {hasStartedChat && (
           <div className="flex-1 w-full max-w-4xl mx-auto px-6 overflow-y-auto">
             <div className="space-y-4 py-6">
-              {messages.map((msg) => (
+              {currentMessages.map((msg) => (
                 <div key={msg.id} className="group">
                   <ChatBubble
                     message={msg.message}
@@ -422,7 +382,8 @@ const NewChat: React.FC = () => {
             onChange={handleMessageChange}
             onSend={handleSendMessage}
             placeholder={getPlaceholder()}
-            isTyping={isTyping}
+            isTyping={isTyping || isSending}
+            disabled={isSending}
           />
         </div>
 

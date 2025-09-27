@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { chatService } from '../services/chatService';
+import { useUserStore } from './UserStore';
 import type {
   ChatMessage,
   ChatSession,
@@ -35,10 +37,16 @@ interface ChatStore {
   // Error state
   error: string | null;
 
+  // Pagination state
+  hasMoreMessages: boolean;
+  hasMoreSessions: boolean;
+  messagesPage: number;
+  sessionsPage: number;
+
   // Session management actions
   createSession: (data?: CreateSessionRequest) => Promise<ChatSession>;
   loadSession: (sessionId: string) => Promise<void>;
-  loadSessions: () => Promise<void>;
+  loadSessions: (refresh?: boolean) => Promise<void>;
   updateSession: (
     sessionId: string,
     data: UpdateSessionRequest,
@@ -49,9 +57,20 @@ interface ChatStore {
 
   // Message management actions
   sendMessage: (data: SendMessageRequest) => Promise<ChatMessage>;
-  loadMessages: (sessionId: string, page?: number) => Promise<void>;
+  loadMessages: (sessionId: string, refresh?: boolean) => Promise<void>;
+  loadMoreMessages: () => Promise<void>;
   regenerateMessage: (data: RegenerateMessageRequest) => Promise<void>;
   submitMessageFeedback: (data: MessageFeedbackRequest) => Promise<void>;
+
+  // Streaming support
+  sendMessageStream: (
+    data: SendMessageRequest,
+    onToken?: (token: string) => void,
+  ) => Promise<ChatMessage>;
+
+  // Search functionality
+  searchSessions: (query: string) => Promise<void>;
+  searchMessages: (query: string) => Promise<void>;
 
   // UI actions
   startChat: () => void;
@@ -71,6 +90,10 @@ interface ChatStore {
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   clearError: () => void;
+
+  // Internal helper methods
+  _getAuthToken: () => string;
+  _handleApiError: (error: any, context: string) => Promise<void>;
 }
 
 export const useChatStore = create<ChatStore>()(
@@ -90,23 +113,72 @@ export const useChatStore = create<ChatStore>()(
       isLoading: false,
       isSending: false,
       error: null,
+      hasMoreMessages: true,
+      hasMoreSessions: true,
+      messagesPage: 1,
+      sessionsPage: 1,
+
+      // Helper function to get auth token
+      _getAuthToken: () => {
+        const userStore = useUserStore.getState();
+        if (!userStore.isAuthenticated || !userStore.tokens?.accessToken) {
+          throw new Error('Please log in to continue');
+        }
+        return userStore.tokens.accessToken;
+      },
+
+      // Helper function to handle API errors
+      _handleApiError: async (error: any, context: string) => {
+        let errorMessage: string;
+        let shouldLogout = false;
+
+        // Handle errors from the service layer
+        if (
+          error.code === 'SESSION_NOT_FOUND' ||
+          error.code === 'MESSAGE_NOT_FOUND'
+        ) {
+          errorMessage = error.message;
+        } else if (error.code === 'RATE_LIMIT_EXCEEDED') {
+          errorMessage = error.message;
+        } else if (
+          error.code === 'INVALID_SESSION_DATA' ||
+          error.code === 'INVALID_MESSAGE_DATA'
+        ) {
+          errorMessage = error.message;
+        } else if (
+          error.details?.status === 401 ||
+          error.message?.includes('unauthorized')
+        ) {
+          shouldLogout = true;
+          errorMessage = 'Your session has expired. Please log in again.';
+        } else {
+          errorMessage = error.message || `Failed to ${context}`;
+        }
+
+        set({ error: errorMessage });
+
+        // Show error toast
+        const { useToastStore } = await import('./ToastStore');
+        useToastStore.getState().error(errorMessage, {
+          title: `${context.charAt(0).toUpperCase() + context.slice(1)} Failed`,
+        });
+
+        // Handle authentication errors
+        if (shouldLogout) {
+          const userStore = useUserStore.getState();
+          await userStore.logout();
+        }
+
+        throw error;
+      },
 
       // Session management actions
       createSession: async (data?: CreateSessionRequest) => {
         set({ isLoading: true, error: null });
 
         try {
-          // This will be replaced with actual API call
-          const newSession: ChatSession = {
-            id: Date.now().toString(),
-            title: data?.title || 'New Chat',
-            lastMessage: data?.initialMessage || '',
-            timestamp: new Date(),
-            isStarred: false,
-            messageCount: 0,
-            subject: data?.subject,
-            quickAction: data?.quickAction,
-          };
+          const token = get()._getAuthToken();
+          const newSession = await chatService.createSession(data || {}, token);
 
           set((state) => ({
             currentSession: newSession,
@@ -116,20 +188,10 @@ export const useChatStore = create<ChatStore>()(
             isLoading: false,
           }));
 
-          // Show success toast
-          const { useToastStore } = await import('../stores/ToastStore');
-          useToastStore.getState().success('New chat session created');
-
           return newSession;
         } catch (error: any) {
-          const errorMessage = error.message || 'Failed to create chat session';
-          set({ error: errorMessage, isLoading: false });
-
-          // Show error toast
-          const { useToastStore } = await import('../stores/ToastStore');
-          useToastStore.getState().error(errorMessage, {
-            title: 'Session Creation Failed',
-          });
+          set({ isLoading: false });
+          await get()._handleApiError(error, 'create session');
           throw error;
         }
       },
@@ -138,75 +200,55 @@ export const useChatStore = create<ChatStore>()(
         set({ isLoading: true, error: null });
 
         try {
-          // This will be replaced with actual API calls
-          const session = get().sessions.find((s) => s.id === sessionId);
-          if (!session) {
-            throw new Error('Session not found');
-          }
-
-          // Mock loading messages - replace with actual API call
-          const messages: ChatMessage[] = [];
+          const token = get()._getAuthToken();
+          const session = await chatService.getSession(sessionId, token);
 
           set({
             currentSession: session,
-            currentMessages: messages,
-            hasStartedChat: messages.length > 0,
+            currentMessages: [],
+            hasStartedChat: false,
+            messagesPage: 1,
+            hasMoreMessages: true,
             isLoading: false,
           });
-        } catch (error: any) {
-          const errorMessage = error.message || 'Failed to load session';
-          set({ error: errorMessage, isLoading: false });
 
-          // Show error toast
-          const { useToastStore } = await import('../stores/ToastStore');
-          useToastStore.getState().error(errorMessage, {
-            title: 'Session Load Failed',
-          });
+          // Load messages for this session
+          await get().loadMessages(sessionId, true);
+        } catch (error: any) {
+          set({ isLoading: false });
+          await get()._handleApiError(error, 'load session');
           throw error;
         }
       },
 
-      loadSessions: async () => {
+      loadSessions: async (refresh = false) => {
+        if (refresh) {
+          set({ sessionsPage: 1, hasMoreSessions: true });
+        }
+
         set({ sessionsLoading: true, sessionsError: null });
 
         try {
-          // This will be replaced with actual API call
-          // Mock data for now
-          const mockSessions: ChatSession[] = [
-            {
-              id: '1',
-              title: 'React Hooks Tutorial',
-              lastMessage: 'Can you explain useEffect dependencies?',
-              timestamp: new Date(Date.now() - 1000 * 60 * 30),
-              isStarred: true,
-              messageCount: 12,
-            },
-            {
-              id: '2',
-              title: 'Calculus Study Guide',
-              lastMessage: 'Create a derivatives practice quiz',
-              timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2),
-              isStarred: false,
-              messageCount: 8,
-            },
-          ];
+          const token = get()._getAuthToken();
+          const { sessionsPage } = get();
 
-          set({
-            sessions: mockSessions,
+          const response = await chatService.getSessions(
+            token,
+            sessionsPage,
+            20,
+          );
+
+          set((state) => ({
+            sessions: refresh
+              ? response.sessions
+              : [...state.sessions, ...response.sessions],
+            hasMoreSessions: response.hasMore,
+            sessionsPage: sessionsPage + 1,
             sessionsLoading: false,
-          });
+          }));
         } catch (error: any) {
-          const errorMessage = error.message || 'Failed to load sessions';
-          set({
-            sessionsError: errorMessage,
-            sessionsLoading: false,
-          });
-
-          // Show error toast
-          const { useToastStore } = await import('../stores/ToastStore');
-          useToastStore.getState().error(errorMessage, {
-            title: 'Failed to Load Sessions',
-          });
+          set({ sessionsLoading: false });
+          await get()._handleApiError(error, 'load sessions');
         }
       },
 
@@ -214,32 +256,30 @@ export const useChatStore = create<ChatStore>()(
         set({ isLoading: true, error: null });
 
         try {
-          // This will be replaced with actual API call
+          const token = get()._getAuthToken();
+          const updatedSession = await chatService.updateSession(
+            sessionId,
+            data,
+            token,
+          );
+
           set((state) => ({
             sessions: state.sessions.map((session) =>
-              session.id === sessionId
-                ? { ...session, ...data, timestamp: new Date() }
-                : session,
+              session.id === sessionId ? updatedSession : session,
             ),
             currentSession:
               state.currentSession?.id === sessionId
-                ? { ...state.currentSession, ...data }
+                ? updatedSession
                 : state.currentSession,
             isLoading: false,
           }));
 
           // Show success toast
-          const { useToastStore } = await import('../stores/ToastStore');
+          const { useToastStore } = await import('./ToastStore');
           useToastStore.getState().success('Session updated successfully');
         } catch (error: any) {
-          const errorMessage = error.message || 'Failed to update session';
-          set({ error: errorMessage, isLoading: false });
-
-          // Show error toast
-          const { useToastStore } = await import('../stores/ToastStore');
-          useToastStore.getState().error(errorMessage, {
-            title: 'Update Failed',
-          });
+          set({ isLoading: false });
+          await get()._handleApiError(error, 'update session');
           throw error;
         }
       },
@@ -248,7 +288,9 @@ export const useChatStore = create<ChatStore>()(
         set({ isLoading: true, error: null });
 
         try {
-          // This will be replaced with actual API call
+          const token = get()._getAuthToken();
+          await chatService.deleteSession(sessionId, token);
+
           set((state) => ({
             sessions: state.sessions.filter(
               (session) => session.id !== sessionId,
@@ -265,27 +307,35 @@ export const useChatStore = create<ChatStore>()(
           }));
 
           // Show success toast
-          const { useToastStore } = await import('../stores/ToastStore');
+          const { useToastStore } = await import('./ToastStore');
           useToastStore.getState().success('Session deleted');
         } catch (error: any) {
-          const errorMessage = error.message || 'Failed to delete session';
-          set({ error: errorMessage, isLoading: false });
-
-          // Show error toast
-          const { useToastStore } = await import('../stores/ToastStore');
-          useToastStore.getState().error(errorMessage, {
-            title: 'Delete Failed',
-          });
+          set({ isLoading: false });
+          await get()._handleApiError(error, 'delete session');
           throw error;
         }
       },
 
       starSession: async (sessionId: string) => {
-        await get().updateSession(sessionId, { isStarred: true });
+        try {
+          const token = get()._getAuthToken();
+          await chatService.starSession(sessionId, token);
+          await get().updateSession(sessionId, { isStarred: true });
+        } catch (error: any) {
+          await get()._handleApiError(error, 'star session');
+          throw error;
+        }
       },
 
       unstarSession: async (sessionId: string) => {
-        await get().updateSession(sessionId, { isStarred: false });
+        try {
+          const token = get()._getAuthToken();
+          await chatService.unstarSession(sessionId, token);
+          await get().updateSession(sessionId, { isStarred: false });
+        } catch (error: any) {
+          await get()._handleApiError(error, 'unstar session');
+          throw error;
+        }
       },
 
       // Message management actions
@@ -293,11 +343,15 @@ export const useChatStore = create<ChatStore>()(
         set({ isSending: true, error: null });
 
         try {
-          // Ensure we have a current session
+          const token = get()._getAuthToken();
           let { currentSession } = get();
+
+          // Ensure we have a current session
           if (!currentSession) {
             currentSession = await get().createSession({
-              title: data.message.substring(0, 50) + '...',
+              title:
+                data.message.substring(0, 50) +
+                (data.message.length > 50 ? '...' : ''),
               subject: data.subject,
               quickAction: data.quickAction,
               initialMessage: data.message,
@@ -306,7 +360,7 @@ export const useChatStore = create<ChatStore>()(
 
           // Add user message immediately
           const userMessage: ChatMessage = {
-            id: Date.now().toString(),
+            id: `temp-${Date.now()}`,
             message: data.message,
             isUser: true,
             timestamp: new Date(),
@@ -319,9 +373,74 @@ export const useChatStore = create<ChatStore>()(
             isTyping: true,
           }));
 
-          // Add typing indicator
-          const typingMessage: ChatMessage = {
-            id: 'typing',
+          // Send message to API
+          const sentMessage = await chatService.sendMessage(
+            {
+              ...data,
+              sessionId: currentSession.id,
+            },
+            token,
+          );
+
+          // Replace temporary message with actual sent message
+          set((state) => ({
+            currentMessages: state.currentMessages.map((msg) =>
+              msg.id === userMessage.id ? sentMessage : msg,
+            ),
+            isSending: false,
+            isTyping: false,
+          }));
+
+          return sentMessage;
+        } catch (error: any) {
+          set({ isSending: false, isTyping: false });
+
+          // Remove temporary message on error
+          set((state) => ({
+            currentMessages: state.currentMessages.filter(
+              (msg) => !msg.id.startsWith('temp-'),
+            ),
+          }));
+
+          await get()._handleApiError(error, 'send message');
+          throw error;
+        }
+      },
+
+      sendMessageStream: async (
+        data: SendMessageRequest,
+        onToken?: (token: string) => void,
+      ) => {
+        set({ isSending: true, error: null });
+
+        try {
+          const token = get()._getAuthToken();
+          let { currentSession } = get();
+
+          // Ensure we have a current session
+          if (!currentSession) {
+            currentSession = await get().createSession({
+              title:
+                data.message.substring(0, 50) +
+                (data.message.length > 50 ? '...' : ''),
+              subject: data.subject,
+              quickAction: data.quickAction,
+              initialMessage: data.message,
+            });
+          }
+
+          // Add user message immediately
+          const userMessage: ChatMessage = {
+            id: `temp-user-${Date.now()}`,
+            message: data.message,
+            isUser: true,
+            timestamp: new Date(),
+            attachments: data.attachments,
+          };
+
+          // Add streaming response placeholder
+          const streamingMessage: ChatMessage = {
+            id: `temp-assistant-${Date.now()}`,
             message: '',
             isUser: false,
             timestamp: new Date(),
@@ -329,117 +448,134 @@ export const useChatStore = create<ChatStore>()(
           };
 
           set((state) => ({
-            currentMessages: [...state.currentMessages, typingMessage],
+            currentMessages: [
+              ...state.currentMessages,
+              userMessage,
+              streamingMessage,
+            ],
+            hasStartedChat: true,
+            isTyping: true,
           }));
 
-          // This will be replaced with actual API call
-          // Mock response for now
-          setTimeout(async () => {
-            const botResponse: ChatMessage = {
-              id: (Date.now() + 1).toString(),
-              message: `I understand you'd like help with: "${data.message}". Let me assist you with that!`,
-              isUser: false,
-              timestamp: new Date(),
-            };
+          let completeMessage: ChatMessage | null = null;
 
-            set((state) => ({
-              currentMessages: [
-                ...state.currentMessages.filter((msg) => msg.id !== 'typing'),
-                botResponse,
-              ],
-              isTyping: false,
-              isSending: false,
-            }));
+          await chatService.sendMessageStream(
+            { ...data, sessionId: currentSession.id },
+            token,
+            (tokenText: string) => {
+              // Update streaming message with new token
+              set((state) => ({
+                currentMessages: state.currentMessages.map((msg) =>
+                  msg.id === streamingMessage.id
+                    ? { ...msg, message: msg.message + tokenText }
+                    : msg,
+                ),
+              }));
+              onToken?.(tokenText);
+            },
+            (message: ChatMessage) => {
+              completeMessage = message;
+              // Replace streaming message with complete message
+              set((state) => ({
+                currentMessages: state.currentMessages.map((msg) => {
+                  if (msg.id === streamingMessage.id) {
+                    return { ...message, isTyping: false };
+                  }
+                  if (msg.id === userMessage.id) {
+                    return { ...msg, id: message.id }; // Update with real ID if provided
+                  }
+                  return msg;
+                }),
+                isTyping: false,
+                isSending: false,
+              }));
+            },
+            (error: Error) => {
+              set({ isSending: false, isTyping: false });
+              // Remove temporary messages on error
+              set((state) => ({
+                currentMessages: state.currentMessages.filter(
+                  (msg) =>
+                    ![userMessage.id, streamingMessage.id].includes(msg.id),
+                ),
+              }));
+              throw error;
+            },
+          );
 
-            // Update session with latest message
-            await get().updateSession(currentSession!.id, {
-              title:
-                currentSession!.messageCount === 0
-                  ? data.message.substring(0, 50) +
-                    (data.message.length > 50 ? '...' : '')
-                  : currentSession!.title,
-            });
-          }, 2000);
-
-          return userMessage;
+          return completeMessage || userMessage;
         } catch (error: any) {
-          const errorMessage = error.message || 'Failed to send message';
-          set({
-            error: errorMessage,
-            isSending: false,
-            isTyping: false,
-          });
-
-          // Remove typing indicator on error
-          set((state) => ({
-            currentMessages: state.currentMessages.filter(
-              (msg) => msg.id !== 'typing',
-            ),
-          }));
-
-          // Show error toast
-          const { useToastStore } = await import('../stores/ToastStore');
-          useToastStore.getState().error(errorMessage, {
-            title: 'Message Failed',
-          });
+          await get()._handleApiError(error, 'send message');
           throw error;
         }
       },
 
-      loadMessages: async (sessionId: string, page = 1) => {
+      loadMessages: async (sessionId: string, refresh = false) => {
+        if (refresh) {
+          set({ messagesPage: 1, hasMoreMessages: true });
+        }
+
         set({ isLoading: true, error: null });
 
         try {
-          // This will be replaced with actual API call
-          // Mock implementation
-          set({ isLoading: false });
+          const token = get()._getAuthToken();
+          const { messagesPage } = get();
+
+          const response = await chatService.getMessages(
+            { sessionId, page: messagesPage, limit: 50 },
+            token,
+          );
+
+          set((state) => ({
+            currentMessages: refresh
+              ? response.messages
+              : [...response.messages, ...state.currentMessages],
+            hasMoreMessages: response.hasMore,
+            messagesPage: messagesPage + 1,
+            hasStartedChat: response.messages.length > 0,
+            isLoading: false,
+          }));
         } catch (error: any) {
-          const errorMessage = error.message || 'Failed to load messages';
-          set({ error: errorMessage, isLoading: false });
-          throw error;
+          set({ isLoading: false });
+          await get()._handleApiError(error, 'load messages');
         }
+      },
+
+      loadMoreMessages: async () => {
+        const { currentSession, hasMoreMessages, isLoading } = get();
+        if (!currentSession || !hasMoreMessages || isLoading) return;
+
+        await get().loadMessages(currentSession.id, false);
       },
 
       regenerateMessage: async (data: RegenerateMessageRequest) => {
         set({ isTyping: true, error: null });
 
         try {
-          // This will be replaced with actual API call
-          // Mock implementation
-          setTimeout(() => {
-            set((state) => ({
-              currentMessages: state.currentMessages.map((msg) =>
-                msg.id === data.messageId
-                  ? {
-                      ...msg,
-                      message: `Regenerated: ${msg.message}`,
-                      metadata: {
-                        ...msg.metadata,
-                        regenerationCount:
-                          (msg.metadata?.regenerationCount || 0) + 1,
-                      },
-                    }
-                  : msg,
-              ),
-              isTyping: false,
-            }));
-          }, 2000);
-        } catch (error: any) {
-          const errorMessage = error.message || 'Failed to regenerate message';
-          set({ error: errorMessage, isTyping: false });
+          const token = get()._getAuthToken();
+          const regeneratedMessage = await chatService.regenerateMessage(
+            data,
+            token,
+          );
 
-          // Show error toast
-          const { useToastStore } = await import('../stores/ToastStore');
-          useToastStore.getState().error(errorMessage, {
-            title: 'Regeneration Failed',
-          });
+          set((state) => ({
+            currentMessages: state.currentMessages.map((msg) =>
+              msg.id === data.messageId ? regeneratedMessage : msg,
+            ),
+            isTyping: false,
+          }));
+        } catch (error: any) {
+          set({ isTyping: false });
+          await get()._handleApiError(error, 'regenerate message');
           throw error;
         }
       },
 
       submitMessageFeedback: async (data: MessageFeedbackRequest) => {
         try {
-          // This will be replaced with actual API call
+          const token = get()._getAuthToken();
+          await chatService.submitMessageFeedback(data, token);
+
           set((state) => ({
             currentMessages: state.currentMessages.map((msg) =>
               msg.id === data.messageId
@@ -456,9 +592,52 @@ export const useChatStore = create<ChatStore>()(
             ),
           }));
         } catch (error: any) {
-          const errorMessage = error.message || 'Failed to submit feedback';
-          set({ error: errorMessage });
+          await get()._handleApiError(error, 'submit feedback');
           throw error;
+        }
+      },
+
+      // Search functionality
+      searchSessions: async (query: string) => {
+        set({ sessionsLoading: true, sessionsError: null });
+
+        try {
+          const token = get()._getAuthToken();
+          const response = await chatService.searchSessions(query, token);
+
+          set({
+            sessions: response.sessions,
+            hasMoreSessions: response.hasMore,
+            sessionsLoading: false,
+          });
+        } catch (error: any) {
+          set({ sessionsLoading: false });
+          await get()._handleApiError(error, 'search sessions');
+        }
+      },
+
+      searchMessages: async (query: string) => {
+        const { currentSession } = get();
+        if (!currentSession) return;
+
+        set({ isLoading: true, error: null });
+
+        try {
+          const token = get()._getAuthToken();
+          const response = await chatService.searchMessages(
+            currentSession.id,
+            query,
+            token,
+          );
+
+          set({
+            currentMessages: response.messages,
+            hasMoreMessages: response.hasMore,
+            isLoading: false,
+          });
+        } catch (error: any) {
+          set({ isLoading: false });
+          await get()._handleApiError(error, 'search messages');
         }
       },
 
@@ -475,6 +654,8 @@ export const useChatStore = create<ChatStore>()(
           userText: '',
           isTyping: false,
           error: null,
+          messagesPage: 1,
+          hasMoreMessages: true,
         }),
 
       setUserText: (text: string) => set({ userText: text }),
@@ -493,11 +674,11 @@ export const useChatStore = create<ChatStore>()(
           await navigator.clipboard.writeText(messageText);
 
           // Show success toast
-          const { useToastStore } = await import('../stores/ToastStore');
+          const { useToastStore } = await import('./ToastStore');
           useToastStore.getState().success('Message copied to clipboard');
         } catch (error) {
           // Show error toast
-          const { useToastStore } = await import('../stores/ToastStore');
+          const { useToastStore } = await import('./ToastStore');
           useToastStore.getState().error('Failed to copy message');
         }
       },
@@ -514,7 +695,7 @@ export const useChatStore = create<ChatStore>()(
           });
 
           // Show success toast
-          const { useToastStore } = await import('../stores/ToastStore');
+          const { useToastStore } = await import('./ToastStore');
           useToastStore.getState().success('Thank you for your feedback!');
         } catch (error) {
           // Error handling is done in submitMessageFeedback
@@ -533,7 +714,7 @@ export const useChatStore = create<ChatStore>()(
           });
 
           // Show success toast
-          const { useToastStore } = await import('../stores/ToastStore');
+          const { useToastStore } = await import('./ToastStore');
           useToastStore.getState().success('Thank you for your feedback!');
         } catch (error) {
           // Error handling is done in submitMessageFeedback
