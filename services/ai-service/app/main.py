@@ -4,17 +4,14 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-
 from app.core.config import get_settings
 from app.core.logging import setup_logging, get_logger
-from app.api.routes import health
-
+from app.api.routes import health_router, chat_router
 
 # Initialize settings and logging
 settings = get_settings()
 setup_logging(settings.log_level)
 logger = get_logger(__name__)
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -50,8 +47,8 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(health.router)
-
+app.include_router(health_router)
+app.include_router(chat_router)
 
 # Global exception handler
 @app.exception_handler(Exception)
@@ -95,7 +92,6 @@ def main():
         reload=settings.debug,
         log_level=settings.log_level.lower()
     )
-
 
 if __name__ == "__main__":
     main()

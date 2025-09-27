@@ -17,6 +17,15 @@ async function forwardRequest(
         ...(req.headers.authorization
           ? { Authorization: req.headers.authorization }
           : {}),
+        // Forward user info as headers to the Chat Service
+        ...(req.user?.id ? { 'X-User-ID': req.user.id } : {}),
+        ...(req.user?.email ? { 'X-User-Email': req.user.email } : {}),
+        ...(req.user?.firstName
+          ? { 'X-User-First-Name': req.user.firstName }
+          : {}),
+        ...(req.user?.lastName
+          ? { 'X-User-Last-Name': req.user.lastName }
+          : {}),
       },
       body:
         method !== 'GET' && method !== 'DELETE'
@@ -43,6 +52,15 @@ async function forwardStreamRequest(req: Request, res: Response, path: string) {
         'Content-Type': 'application/json',
         ...(req.headers.authorization
           ? { Authorization: req.headers.authorization }
+          : {}),
+        // Forward user info for streaming as well
+        ...(req.user?.id ? { 'X-User-ID': req.user.id } : {}),
+        ...(req.user?.email ? { 'X-User-Email': req.user.email } : {}),
+        ...(req.user?.firstName
+          ? { 'X-User-First-Name': req.user.firstName }
+          : {}),
+        ...(req.user?.lastName
+          ? { 'X-User-Last-Name': req.user.lastName }
           : {}),
       },
       body: JSON.stringify(req.body),

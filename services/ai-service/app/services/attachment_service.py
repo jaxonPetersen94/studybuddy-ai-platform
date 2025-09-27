@@ -1,0 +1,642 @@
+import asyncio
+import uuid
+import os
+import hashlib
+import mimetypes
+from datetime import datetime, timezone
+from typing import Dict, List, Optional, Any, BinaryIO
+from pathlib import Path
+import aiofiles
+from fastapi import UploadFile, HTTPException
+from PIL import Image
+import magic
+from motor.motor_asyncio import AsyncIOMotorDatabase
+from bson import ObjectId
+from app.core.database import get_database
+from app.core.config import get_settings
+from app.core.logging import get_logger
+
+settings = get_settings()
+logger = get_logger(__name__)
+
+
+class AttachmentService:
+    """Service for handling file attachments in chat"""
+    
+    # File size limits (in bytes)
+    MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
+    MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10MB for images
+    MAX_DOCUMENT_SIZE = 25 * 1024 * 1024  # 25MB for documents
+    
+    # Allowed file types
+    ALLOWED_IMAGE_TYPES = {
+        "image/jpeg", "image/png", "image/gif", "image/webp", 
+        "image/bmp", "image/tiff", "image/svg+xml"
+    }
+    
+    ALLOWED_DOCUMENT_TYPES = {
+        "application/pdf", "text/plain", "text/markdown", "text/csv",
+        "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "application/vnd.ms-powerpoint", "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        "application/json", "application/xml", "text/xml", "text/html"
+    }
+    
+    ALLOWED_AUDIO_TYPES = {
+        "audio/mpeg", "audio/wav", "audio/ogg", "audio/mp4", "audio/webm"
+    }
+    
+    ALLOWED_VIDEO_TYPES = {
+        "video/mp4", "video/webm", "video/ogg", "video/quicktime"
+    }
+    
+    def __init__(self):
+        self.db = None
+        self.storage_path = Path(settings.UPLOAD_DIR or "./uploads")
+        self.storage_path.mkdir(parents=True, exist_ok=True)
+    
+    async def _get_db(self) -> AsyncIOMotorDatabase:
+        """Get database connection"""
+        if not self.db:
+            self.db = await get_database()
+        return self.db
+    
+    async def create_attachment(
+        self, 
+        user_id: str, 
+        file: UploadFile, 
+        metadata: Dict[str, Any] = None
+    ) -> Dict[str, Any]:
+        """
+        Create/upload a new attachment
+        
+        Args:
+            user_id: ID of the user uploading the file
+            file: The uploaded file
+            metadata: Optional metadata dictionary
+            
+        Returns:
+            Dictionary containing attachment information
+        """
+        try:
+            db = await self._get_db()
+            
+            # Validate file
+            await self._validate_file(file)
+            
+            # Generate attachment ID and file paths
+            attachment_id = str(uuid.uuid4())
+            file_hash = await self._calculate_file_hash(file)
+            file_extension = self._get_file_extension(file.filename)
+            stored_filename = f"{attachment_id}{file_extension}"
+            file_path = self.storage_path / user_id / stored_filename
+            
+            # Create user directory if it doesn't exist
+            file_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            # Detect content type
+            content_type = await self._detect_content_type(file)
+            file_category = self._categorize_file(content_type)
+            
+            # Save file to disk
+            await self._save_file_to_disk(file, file_path)
+            
+            # Process file based on type
+            processed_metadata = await self._process_file(file_path, content_type, metadata or {})
+            
+            # Create attachment record
+            attachment_data = {
+                "_id": ObjectId(),
+                "user_id": ObjectId(user_id),
+                "filename": file.filename,
+                "original_filename": file.filename,
+                "stored_filename": stored_filename,
+                "file_path": str(file_path),
+                "content_type": content_type,
+                "file_size": file.size,
+                "file_hash": file_hash,
+                "category": file_category,
+                "metadata": processed_metadata,
+                "is_processed": True,
+                "created_at": datetime.now(timezone.utc),
+                "updated_at": datetime.now(timezone.utc)
+            }
+            
+            # Insert into database
+            result = await db.attachments.insert_one(attachment_data)
+            
+            # Convert ObjectId to string for response
+            attachment_data["id"] = str(attachment_data["_id"])
+            attachment_data["user_id"] = str(attachment_data["user_id"])
+            del attachment_data["_id"]
+            
+            logger.info(f"Created attachment {attachment_data['id']} for user {user_id}")
+            
+            return attachment_data
+            
+        except Exception as e:
+            logger.error(f"Error creating attachment for user {user_id}: {str(e)}")
+            
+            # Clean up file if it was saved
+            try:
+                if 'file_path' in locals() and file_path.exists():
+                    file_path.unlink()
+            except Exception:
+                pass
+            
+            raise
+    
+    async def get_attachment(self, attachment_id: str, user_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Get a specific attachment by ID
+        
+        Args:
+            attachment_id: ID of the attachment to retrieve
+            user_id: ID of the user requesting the attachment
+            
+        Returns:
+            Dictionary containing attachment data or None if not found
+        """
+        try:
+            db = await self._get_db()
+            
+            attachment = await db.attachments.find_one({
+                "_id": ObjectId(attachment_id),
+                "user_id": ObjectId(user_id)
+            })
+            
+            if not attachment:
+                return None
+            
+            # Convert ObjectIds to strings
+            attachment["id"] = str(attachment["_id"])
+            attachment["user_id"] = str(attachment["user_id"])
+            del attachment["_id"]
+            
+            # Check if file still exists on disk
+            file_path = Path(attachment["file_path"])
+            attachment["file_exists"] = file_path.exists()
+            
+            return attachment
+            
+        except Exception as e:
+            logger.error(f"Error getting attachment {attachment_id} for user {user_id}: {str(e)}")
+            raise
+    
+    async def get_user_attachments(
+        self, 
+        user_id: str, 
+        limit: int = 50, 
+        offset: int = 0,
+        category: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Get user's file attachments with optional filtering
+        
+        Args:
+            user_id: ID of the user
+            limit: Maximum number of attachments to return
+            offset: Number of attachments to skip
+            category: Optional filter by file category
+            
+        Returns:
+            Dictionary containing attachments and pagination info
+        """
+        try:
+            db = await self._get_db()
+            
+            # Build query filter
+            query_filter = {"user_id": ObjectId(user_id)}
+            
+            if category:
+                query_filter["category"] = category
+            
+            # Get attachments with pagination
+            cursor = db.attachments.find(query_filter).sort("created_at", -1).skip(offset).limit(limit)
+            attachments = await cursor.to_list(length=limit)
+            
+            # Convert ObjectIds to strings and check file existence
+            for attachment in attachments:
+                attachment["id"] = str(attachment["_id"])
+                attachment["user_id"] = str(attachment["user_id"])
+                del attachment["_id"]
+                
+                # Check file existence
+                file_path = Path(attachment["file_path"])
+                attachment["file_exists"] = file_path.exists()
+            
+            # Get total count for pagination
+            total_count = await db.attachments.count_documents(query_filter)
+            
+            return {
+                "attachments": attachments,
+                "pagination": {
+                    "total": total_count,
+                    "limit": limit,
+                    "offset": offset,
+                    "has_more": offset + len(attachments) < total_count
+                }
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting attachments for user {user_id}: {str(e)}")
+            raise
+    
+    async def delete_attachment(self, attachment_id: str, user_id: str) -> bool:
+        """
+        Delete an attachment and its file
+        
+        Args:
+            attachment_id: ID of the attachment to delete
+            user_id: ID of the user deleting the attachment
+            
+        Returns:
+            True if deleted successfully, False if not found
+        """
+        try:
+            db = await self._get_db()
+            
+            # Get attachment info first
+            attachment = await self.get_attachment(attachment_id, user_id)
+            if not attachment:
+                return False
+            
+            # Delete file from disk
+            file_path = Path(attachment["file_path"])
+            if file_path.exists():
+                try:
+                    file_path.unlink()
+                except Exception as e:
+                    logger.warning(f"Could not delete file {file_path}: {str(e)}")
+            
+            # Delete from database
+            result = await db.attachments.delete_one({
+                "_id": ObjectId(attachment_id),
+                "user_id": ObjectId(user_id)
+            })
+            
+            if result.deleted_count > 0:
+                logger.info(f"Deleted attachment {attachment_id} for user {user_id}")
+                return True
+            
+            return False
+            
+        except Exception as e:
+            logger.error(f"Error deleting attachment {attachment_id} for user {user_id}: {str(e)}")
+            raise
+    
+    async def get_attachment_content(self, attachment_id: str, user_id: str) -> Optional[bytes]:
+        """
+        Get the raw content of an attachment file
+        
+        Args:
+            attachment_id: ID of the attachment
+            user_id: ID of the user
+            
+        Returns:
+            File content as bytes or None if not found
+        """
+        try:
+            attachment = await self.get_attachment(attachment_id, user_id)
+            if not attachment or not attachment.get("file_exists", False):
+                return None
+            
+            file_path = Path(attachment["file_path"])
+            
+            async with aiofiles.open(file_path, 'rb') as f:
+                content = await f.read()
+            
+            return content
+            
+        except Exception as e:
+            logger.error(f"Error getting attachment content {attachment_id} for user {user_id}: {str(e)}")
+            raise
+    
+    async def get_attachment_text_content(self, attachment_id: str, user_id: str) -> Optional[str]:
+        """
+        Extract text content from an attachment (for text files, PDFs, etc.)
+        
+        Args:
+            attachment_id: ID of the attachment
+            user_id: ID of the user
+            
+        Returns:
+            Extracted text content or None if not possible
+        """
+        try:
+            attachment = await self.get_attachment(attachment_id, user_id)
+            if not attachment:
+                return None
+            
+            content_type = attachment.get("content_type", "")
+            file_path = Path(attachment["file_path"])
+            
+            if not file_path.exists():
+                return None
+            
+            # Handle different file types
+            if content_type.startswith("text/"):
+                async with aiofiles.open(file_path, 'r', encoding='utf-8') as f:
+                    return await f.read()
+            
+            elif content_type == "application/pdf":
+                return await self._extract_pdf_text(file_path)
+            
+            elif content_type in ["application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"]:
+                return await self._extract_word_text(file_path)
+            
+            elif content_type == "application/json":
+                async with aiofiles.open(file_path, 'r', encoding='utf-8') as f:
+                    content = await f.read()
+                    import json
+                    return json.dumps(json.loads(content), indent=2)
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error extracting text from attachment {attachment_id}: {str(e)}")
+            return None
+    
+    async def _validate_file(self, file: UploadFile):
+        """Validate uploaded file"""
+        if file.size > self.MAX_FILE_SIZE:
+            raise HTTPException(
+                status_code=413, 
+                detail=f"File too large. Maximum size is {self.MAX_FILE_SIZE // (1024*1024)}MB"
+            )
+        
+        if not file.filename:
+            raise HTTPException(status_code=400, detail="Filename is required")
+        
+        # Check file extension
+        allowed_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.tiff', '.svg',
+                            '.pdf', '.txt', '.md', '.csv', '.doc', '.docx', '.xls', '.xlsx',
+                            '.ppt', '.pptx', '.json', '.xml', '.html', '.mp3', '.wav', '.ogg',
+                            '.mp4', '.webm', '.mov'}
+        
+        file_extension = self._get_file_extension(file.filename).lower()
+        if file_extension not in allowed_extensions:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"File type {file_extension} not allowed"
+            )
+    
+    async def _detect_content_type(self, file: UploadFile) -> str:
+        """Detect the actual content type of the file"""
+        # Reset file position
+        await file.seek(0)
+        
+        # Read first chunk for detection
+        chunk = await file.read(1024)
+        await file.seek(0)
+        
+        # Use python-magic for detection
+        try:
+            detected_type = magic.from_buffer(chunk, mime=True)
+            return detected_type
+        except Exception:
+            # Fallback to filename-based detection
+            content_type, _ = mimetypes.guess_type(file.filename)
+            return content_type or "application/octet-stream"
+    
+    def _categorize_file(self, content_type: str) -> str:
+        """Categorize file based on content type"""
+        if content_type in self.ALLOWED_IMAGE_TYPES:
+            return "image"
+        elif content_type in self.ALLOWED_DOCUMENT_TYPES:
+            return "document"
+        elif content_type in self.ALLOWED_AUDIO_TYPES:
+            return "audio"
+        elif content_type in self.ALLOWED_VIDEO_TYPES:
+            return "video"
+        else:
+            return "other"
+    
+    def _get_file_extension(self, filename: str) -> str:
+        """Get file extension from filename"""
+        return Path(filename).suffix
+    
+    async def _calculate_file_hash(self, file: UploadFile) -> str:
+        """Calculate SHA-256 hash of the file"""
+        await file.seek(0)
+        
+        hash_sha256 = hashlib.sha256()
+        chunk_size = 8192
+        
+        while chunk := await file.read(chunk_size):
+            hash_sha256.update(chunk)
+        
+        await file.seek(0)
+        return hash_sha256.hexdigest()
+    
+    async def _save_file_to_disk(self, file: UploadFile, file_path: Path):
+        """Save uploaded file to disk"""
+        await file.seek(0)
+        
+        async with aiofiles.open(file_path, 'wb') as f:
+            chunk_size = 8192
+            while chunk := await file.read(chunk_size):
+                await f.write(chunk)
+        
+        await file.seek(0)
+    
+    async def _process_file(self, file_path: Path, content_type: str, metadata: Dict[str, Any]) -> Dict[str, Any]:
+        """Process file based on its type and extract metadata"""
+        processed_metadata = metadata.copy()
+        
+        try:
+            if content_type.startswith("image/"):
+                processed_metadata.update(await self._process_image(file_path))
+            elif content_type == "application/pdf":
+                processed_metadata.update(await self._process_pdf(file_path))
+            elif content_type.startswith("audio/"):
+                processed_metadata.update(await self._process_audio(file_path))
+            elif content_type.startswith("video/"):
+                processed_metadata.update(await self._process_video(file_path))
+            
+        except Exception as e:
+            logger.warning(f"Error processing file {file_path}: {str(e)}")
+        
+        return processed_metadata
+    
+    async def _process_image(self, file_path: Path) -> Dict[str, Any]:
+        """Process image file and extract metadata"""
+        try:
+            with Image.open(file_path) as img:
+                metadata = {
+                    "width": img.width,
+                    "height": img.height,
+                    "format": img.format,
+                    "mode": img.mode
+                }
+                
+                # Extract EXIF data if available
+                if hasattr(img, '_getexif') and img._getexif():
+                    exif = img._getexif()
+                    if exif:
+                        metadata["has_exif"] = True
+                        # Add basic EXIF info (avoid sensitive location data)
+                        if 306 in exif:  # DateTime
+                            metadata["date_taken"] = str(exif[306])
+                
+                return metadata
+        except Exception as e:
+            logger.warning(f"Error processing image {file_path}: {str(e)}")
+            return {}
+    
+    async def _process_pdf(self, file_path: Path) -> Dict[str, Any]:
+        """Process PDF file and extract metadata"""
+        try:
+            import PyPDF2
+            
+            with open(file_path, 'rb') as f:
+                pdf_reader = PyPDF2.PdfReader(f)
+                
+                metadata = {
+                    "page_count": len(pdf_reader.pages),
+                    "has_text": True
+                }
+                
+                # Extract PDF metadata
+                if pdf_reader.metadata:
+                    pdf_meta = pdf_reader.metadata
+                    if pdf_meta.title:
+                        metadata["title"] = pdf_meta.title
+                    if pdf_meta.author:
+                        metadata["author"] = pdf_meta.author
+                    if pdf_meta.creator:
+                        metadata["creator"] = pdf_meta.creator
+                
+                return metadata
+        except Exception as e:
+            logger.warning(f"Error processing PDF {file_path}: {str(e)}")
+            return {"page_count": 0}
+    
+    async def _process_audio(self, file_path: Path) -> Dict[str, Any]:
+        """Process audio file and extract metadata"""
+        try:
+            import mutagen
+            
+            audio_file = mutagen.File(file_path)
+            if audio_file:
+                metadata = {
+                    "duration": round(audio_file.info.length, 2) if hasattr(audio_file, 'info') else 0,
+                    "bitrate": getattr(audio_file.info, 'bitrate', 0),
+                    "sample_rate": getattr(audio_file.info, 'sample_rate', 0)
+                }
+                
+                # Extract tags
+                if audio_file.tags:
+                    if 'TIT2' in audio_file.tags:  # Title
+                        metadata["title"] = str(audio_file.tags['TIT2'][0])
+                    if 'TPE1' in audio_file.tags:  # Artist
+                        metadata["artist"] = str(audio_file.tags['TPE1'][0])
+                
+                return metadata
+        except Exception as e:
+            logger.warning(f"Error processing audio {file_path}: {str(e)}")
+            return {}
+    
+    async def _process_video(self, file_path: Path) -> Dict[str, Any]:
+        """Process video file and extract metadata"""
+        try:
+            import cv2
+            
+            cap = cv2.VideoCapture(str(file_path))
+            
+            if cap.isOpened():
+                fps = cap.get(cv2.CAP_PROP_FPS)
+                frame_count = cap.get(cv2.CAP_PROP_FRAME_COUNT)
+                width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+                height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                
+                duration = frame_count / fps if fps > 0 else 0
+                
+                metadata = {
+                    "width": width,
+                    "height": height,
+                    "fps": round(fps, 2),
+                    "duration": round(duration, 2),
+                    "frame_count": int(frame_count)
+                }
+                
+                cap.release()
+                return metadata
+        except Exception as e:
+            logger.warning(f"Error processing video {file_path}: {str(e)}")
+            return {}
+    
+    async def _extract_pdf_text(self, file_path: Path) -> str:
+        """Extract text content from PDF"""
+        try:
+            import PyPDF2
+            
+            text = ""
+            with open(file_path, 'rb') as f:
+                pdf_reader = PyPDF2.PdfReader(f)
+                for page in pdf_reader.pages:
+                    text += page.extract_text() + "\n"
+            
+            return text.strip()
+        except Exception as e:
+            logger.warning(f"Error extracting PDF text from {file_path}: {str(e)}")
+            return ""
+    
+    async def _extract_word_text(self, file_path: Path) -> str:
+        """Extract text content from Word documents"""
+        try:
+            import docx
+            
+            doc = docx.Document(file_path)
+            text = ""
+            for paragraph in doc.paragraphs:
+                text += paragraph.text + "\n"
+            
+            return text.strip()
+        except Exception as e:
+            logger.warning(f"Error extracting Word text from {file_path}: {str(e)}")
+            return ""
+    
+    async def get_attachment_stats(self, user_id: str) -> Dict[str, Any]:
+        """
+        Get attachment statistics for a user
+        
+        Args:
+            user_id: ID of the user
+            
+        Returns:
+            Dictionary containing attachment statistics
+        """
+        try:
+            db = await self._get_db()
+            
+            pipeline = [
+                {"$match": {"user_id": ObjectId(user_id)}},
+                {"$group": {
+                    "_id": None,
+                    "total_attachments": {"$sum": 1},
+                    "total_size": {"$sum": "$file_size"},
+                    "avg_size": {"$avg": "$file_size"},
+                    "image_count": {"$sum": {"$cond": [{"$eq": ["$category", "image"]}, 1, 0]}},
+                    "document_count": {"$sum": {"$cond": [{"$eq": ["$category", "document"]}, 1, 0]}},
+                    "audio_count": {"$sum": {"$cond": [{"$eq": ["$category", "audio"]}, 1, 0]}},
+                    "video_count": {"$sum": {"$cond": [{"$eq": ["$category", "video"]}, 1, 0]}},
+                    "last_upload": {"$max": "$created_at"}
+                }}
+            ]
+            
+            cursor = db.attachments.aggregate(pipeline)
+            result = await cursor.to_list(length=1)
+            stats = result[0] if result else {}
+            
+            # Convert sizes to human readable format
+            if stats.get("total_size"):
+                stats["total_size_mb"] = round(stats["total_size"] / (1024 * 1024), 2)
+            if stats.get("avg_size"):
+                stats["avg_size_mb"] = round(stats["avg_size"] / (1024 * 1024), 2)
+            
+            return stats
+            
+        except Exception as e:
+            logger.error(f"Error getting attachment stats for user {user_id}: {str(e)}")
+            raise

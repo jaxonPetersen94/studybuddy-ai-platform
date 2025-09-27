@@ -1,4 +1,5 @@
 import express, { Request, Response } from 'express';
+import { authenticateUser } from '../middleware/auth';
 import userRoutes from './userRoutes';
 import chatRoutes from './chatRoutes';
 
@@ -31,10 +32,10 @@ router.get('/', (_req: Request, res: Response) => {
 // User service routes
 router.use('/api/v1/users', userRoutes);
 
-// Chat service routes
-router.use('/api/v1/chats', chatRoutes);
+// Chat service routes (protected - require authentication)
+router.use('/api/v1/chats', authenticateUser, chatRoutes);
 
-// Catch-all for undefined routes - using .use() without a path
+// Catch-all for undefined routes
 router.use((req: Request, res: Response) => {
   res.status(404).json({
     error: 'Endpoint not found',
