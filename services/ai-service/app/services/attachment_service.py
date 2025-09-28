@@ -51,7 +51,7 @@ class AttachmentService:
     
     def __init__(self):
         self.db = None
-        self.storage_path = Path(settings.UPLOAD_DIR or "./uploads")
+        self.storage_path = Path(settings.upload_dir or "./uploads")
         self.storage_path.mkdir(parents=True, exist_ok=True)
         logger.info("AttachmentService initialized with minimal processing capabilities")
     

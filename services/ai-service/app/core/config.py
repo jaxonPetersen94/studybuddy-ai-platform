@@ -37,6 +37,9 @@ class Settings(BaseSettings):
     mongo_uri: str = Field(default="mongodb://localhost:27017", alias="MONGO_URI")
     mongo_db_name: str = Field(default="studybuddy_ai", alias="MONGO_DB_NAME")
     
+    # File Upload Configuration
+    upload_dir: str = Field(default="./uploads", alias="UPLOAD_DIR", description="Directory for storing uploaded files")
+    
     # AI Configuration
     ai_request_timeout: Optional[float] = Field(default=60.0, alias="AI_REQUEST_TIMEOUT")
     default_ai_model: Optional[str] = Field(default="gpt-4", alias="DEFAULT_AI_MODEL")

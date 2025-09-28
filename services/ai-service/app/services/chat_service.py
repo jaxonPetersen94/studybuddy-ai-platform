@@ -6,6 +6,7 @@ from app.core.config import get_settings
 from app.core.logging import get_logger
 from app.models.message import Message
 from app.models.session import Session
+from typing import Optional
 from app.services.ai_service import AIService
 from app.services.message_service import MessageService
 from app.services.session_service import SessionService
@@ -19,11 +20,25 @@ logger = get_logger(__name__)
 class ChatService:
     """Service for handling chat operations and AI interactions"""
     
-    def __init__(self):
-        self.ai_service = AIService()
-        self.message_service = MessageService()
-        self.session_service = SessionService()
-        self.attachment_service = AttachmentService()
+    def __init__(self, 
+                 ai_service: Optional[AIService] = None,
+                 message_service: Optional[MessageService] = None,
+                 session_service: Optional[SessionService] = None,
+                 attachment_service: Optional[AttachmentService] = None):
+        """
+        Initialize ChatService with optional dependency injection.
+        If services are not provided, new instances will be created.
+        
+        Args:
+            ai_service: AI service instance
+            message_service: Message service instance  
+            session_service: Session service instance
+            attachment_service: Attachment service instance
+        """
+        self.ai_service = ai_service or AIService()
+        self.message_service = message_service or MessageService()
+        self.session_service = session_service or SessionService()
+        self.attachment_service = attachment_service or AttachmentService()
     
     async def stream_response(
         self, 

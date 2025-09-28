@@ -39,6 +39,7 @@ dependencies = [
     
     # Logging
     "structlog>=24.4.0",
+    "python-multipart (>=0.0.20,<0.0.21)",
 ]
 
 [project.optional-dependencies]

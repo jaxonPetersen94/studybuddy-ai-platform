@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Optional
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, Response, UploadFile
 from fastapi.responses import StreamingResponse
+
 from app.core.auth import get_current_user
 from app.core.logging import get_logger
 from app.models.user import User
@@ -17,22 +18,19 @@ from app.schemas.chat import (
     SessionUpdate,
     StreamMessageRequest,
 )
-from app.services.analytics_service import AnalyticsService
-from app.services.attachment_service import AttachmentService
-from app.services.chat_service import ChatService
-from app.services.message_service import MessageService
-from app.services.session_service import SessionService
+
+# Import our dependency injection types
+from app.core.dependencies import (
+    AnalyticsServiceDep,
+    AttachmentServiceDep,
+    ChatServiceDep,
+    MessageServiceDep,
+    SessionServiceDep
+)
 
 # Initialize router and logger
 router = APIRouter(prefix="/api/v1/chats", tags=["chats"])
 logger = get_logger(__name__)
-
-# Initialize services (you can also use dependency injection)
-analytics_service = AnalyticsService()
-attachment_service = AttachmentService()
-chat_service = ChatService()
-message_service = MessageService()
-session_service = SessionService()
 
 # ============================================================================
 # Session Management Routes
@@ -40,6 +38,7 @@ session_service = SessionService()
 
 @router.get("/sessions")
 async def get_sessions(
+    session_service: SessionServiceDep,
     user: User = Depends(get_current_user),
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
@@ -67,6 +66,7 @@ async def get_sessions(
 @router.post("/sessions", status_code=201)
 async def create_session(
     session_data: SessionCreate,
+    session_service: SessionServiceDep,
     user: User = Depends(get_current_user)
 ):
     """Create a new chat session"""
@@ -84,6 +84,7 @@ async def create_session(
 @router.get("/sessions/{session_id}")
 async def get_session(
     session_id: str,
+    session_service: SessionServiceDep,
     user: User = Depends(get_current_user)
 ):
     """Get a specific session by ID"""
@@ -107,6 +108,7 @@ async def get_session(
 async def update_session(
     session_id: str,
     session_data: SessionUpdate,
+    session_service: SessionServiceDep,
     user: User = Depends(get_current_user)
 ):
     """Update a session"""
@@ -129,6 +131,7 @@ async def update_session(
 @router.delete("/sessions/{session_id}", status_code=204)
 async def delete_session(
     session_id: str,
+    session_service: SessionServiceDep,
     user: User = Depends(get_current_user)
 ):
     """Delete a session"""
@@ -148,6 +151,7 @@ async def delete_session(
 
 @router.get("/messages")
 async def get_messages(
+    message_service: MessageServiceDep,
     user: User = Depends(get_current_user),
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
@@ -173,6 +177,7 @@ async def get_messages(
 @router.post("/messages", status_code=201)
 async def create_message(
     message_data: MessageCreate,
+    message_service: MessageServiceDep,
     user: User = Depends(get_current_user)
 ):
     """Create a new message"""
@@ -190,6 +195,7 @@ async def create_message(
 @router.get("/sessions/{session_id}/messages")
 async def get_session_messages(
     session_id: str,
+    message_service: MessageServiceDep,
     user: User = Depends(get_current_user),
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0)
@@ -214,6 +220,7 @@ async def get_session_messages(
 @router.get("/messages/{message_id}")
 async def get_message(
     message_id: str,
+    message_service: MessageServiceDep,
     user: User = Depends(get_current_user)
 ):
     """Get a specific message by ID"""
@@ -237,6 +244,7 @@ async def get_message(
 async def update_message(
     message_id: str,
     message_data: MessageUpdate,
+    message_service: MessageServiceDep,
     user: User = Depends(get_current_user)
 ):
     """Update a message"""
@@ -259,6 +267,7 @@ async def update_message(
 @router.delete("/messages/{message_id}", status_code=204)
 async def delete_message(
     message_id: str,
+    message_service: MessageServiceDep,
     user: User = Depends(get_current_user)
 ):
     """Delete a message"""
@@ -276,6 +285,7 @@ async def delete_message(
 async def regenerate_message(
     message_id: str,
     regenerate_data: MessageRegenerate,
+    message_service: MessageServiceDep,
     user: User = Depends(get_current_user)
 ):
     """Regenerate an AI response for a message"""
@@ -299,6 +309,7 @@ async def regenerate_message(
 async def submit_feedback(
     message_id: str,
     feedback_data: MessageFeedback,
+    message_service: MessageServiceDep,
     user: User = Depends(get_current_user)
 ):
     """Submit feedback for a message"""
@@ -320,6 +331,7 @@ async def submit_feedback(
 @router.post("/messages/stream")
 async def stream_message(
     stream_data: StreamMessageRequest,
+    chat_service: ChatServiceDep,
     user: User = Depends(get_current_user)
 ):
     """Stream AI response for real-time chat"""
@@ -347,6 +359,7 @@ async def stream_message(
 
 @router.get("/attachments")
 async def get_attachments(
+    attachment_service: AttachmentServiceDep,
     user: User = Depends(get_current_user),
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0)
@@ -369,6 +382,7 @@ async def get_attachments(
 
 @router.post("/attachments", status_code=201)
 async def create_attachment(
+    attachment_service: AttachmentServiceDep,
     file: UploadFile = File(...),
     metadata: str = Form("{}"),
     user: User = Depends(get_current_user)
@@ -391,6 +405,7 @@ async def create_attachment(
 @router.get("/attachments/{attachment_id}")
 async def get_attachment(
     attachment_id: str,
+    attachment_service: AttachmentServiceDep,
     user: User = Depends(get_current_user)
 ):
     """Get a specific attachment"""
@@ -413,6 +428,7 @@ async def get_attachment(
 @router.delete("/attachments/{attachment_id}", status_code=204)
 async def delete_attachment(
     attachment_id: str,
+    attachment_service: AttachmentServiceDep,
     user: User = Depends(get_current_user)
 ):
     """Delete an attachment"""
@@ -432,7 +448,8 @@ async def delete_attachment(
 
 @router.get("/sessions/search")
 async def search_sessions(
-    q: str = Query(..., min_length=1),
+    q: str,
+    session_service: SessionServiceDep,
     user: User = Depends(get_current_user),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0)
@@ -457,7 +474,8 @@ async def search_sessions(
 @router.get("/sessions/{session_id}/messages/search")
 async def search_session_messages(
     session_id: str,
-    q: str = Query(..., min_length=1),
+    q: str,
+    message_service: MessageServiceDep,
     user: User = Depends(get_current_user),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0)
@@ -487,6 +505,7 @@ async def search_session_messages(
 @router.post("/sessions/{session_id}/star")
 async def star_session(
     session_id: str,
+    session_service: SessionServiceDep,
     user: User = Depends(get_current_user)
 ):
     """Star/favorite a session"""
@@ -509,6 +528,7 @@ async def star_session(
 @router.delete("/sessions/{session_id}/star")
 async def unstar_session(
     session_id: str,
+    session_service: SessionServiceDep,
     user: User = Depends(get_current_user)
 ):
     """Unstar/unfavorite a session"""
@@ -535,6 +555,7 @@ async def unstar_session(
 @router.post("/sessions/bulk-delete")
 async def bulk_delete_sessions(
     request_data: BulkDeleteRequest,
+    session_service: SessionServiceDep,
     user: User = Depends(get_current_user)
 ):
     """Bulk delete sessions"""
@@ -552,6 +573,7 @@ async def bulk_delete_sessions(
 @router.post("/messages/bulk-delete")
 async def bulk_delete_messages(
     request_data: BulkDeleteRequest,
+    message_service: MessageServiceDep,
     user: User = Depends(get_current_user)
 ):
     """Bulk delete messages"""
@@ -573,6 +595,7 @@ async def bulk_delete_messages(
 @router.get("/sessions/{session_id}/analytics")
 async def get_session_analytics(
     session_id: str,
+    analytics_service: AnalyticsServiceDep,
     user: User = Depends(get_current_user)
 ):
     """Get analytics for a specific session"""
@@ -594,6 +617,7 @@ async def get_session_analytics(
 
 @router.get("/stats")
 async def get_stats(
+    analytics_service: AnalyticsServiceDep,
     user: User = Depends(get_current_user),
     period: str = Query("30d", regex="^(7d|30d|90d|1y)$")
 ):

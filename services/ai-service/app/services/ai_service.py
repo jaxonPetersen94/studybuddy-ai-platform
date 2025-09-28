@@ -11,26 +11,26 @@ settings = get_settings()
 logger = get_logger(__name__)
 
 # Configure LiteLLM with API keys
-if hasattr(settings, 'OPENAI_API_KEY') and settings.OPENAI_API_KEY:
-    litellm.openai_key = settings.OPENAI_API_KEY
+if hasattr(settings, 'openai_api_key') and settings.openai_api_key:
+    litellm.openai_key = settings.openai_api_key
 
-if hasattr(settings, 'ANTHROPIC_API_KEY') and settings.ANTHROPIC_API_KEY:
-    litellm.anthropic_key = settings.ANTHROPIC_API_KEY
+if hasattr(settings, 'anthropic_api_key') and settings.anthropic_api_key:
+    litellm.anthropic_key = settings.anthropic_api_key
 
-if hasattr(settings, 'GOOGLE_API_KEY') and settings.GOOGLE_API_KEY:
-    litellm.google_key = settings.GOOGLE_API_KEY
+if hasattr(settings, 'google_api_key') and settings.google_api_key:
+    litellm.google_key = settings.google_api_key
 
 # Configure timeout
-litellm.request_timeout = settings.AI_REQUEST_TIMEOUT or 60.0
+litellm.request_timeout = settings.ai_request_timeout or 60.0
 
 
 class AIService:
     """Service for handling AI model interactions and streaming responses using LiteLLM"""
     
     def __init__(self):
-        self.default_model = settings.DEFAULT_AI_MODEL or "gpt-4"
-        self.max_tokens = settings.AI_MAX_TOKENS or 4000
-        self.temperature = settings.AI_TEMPERATURE or 0.7
+        self.default_model = settings.default_ai_model or "gpt-4"
+        self.max_tokens = settings.ai_max_tokens or 4000
+        self.temperature = settings.ai_temperature or 0.7
         
         # Supported models mapping
         self.supported_models = {
