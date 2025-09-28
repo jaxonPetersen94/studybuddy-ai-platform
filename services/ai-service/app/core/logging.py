@@ -28,6 +28,16 @@ def setup_logging(log_level: str = "INFO") -> None:
         level=getattr(logging, log_level.upper()),
         format="%(message)s" if log_level != "DEBUG" else None,
     )
+    
+    # Silence MongoDB/PyMongo verbose logging
+    # This will prevent all the heartbeat and connection monitoring spam
+    logging.getLogger("pymongo").setLevel(logging.ERROR)
+    logging.getLogger("pymongo.command").setLevel(logging.ERROR)
+    logging.getLogger("pymongo.connection").setLevel(logging.ERROR)
+    logging.getLogger("pymongo.server").setLevel(logging.ERROR)
+    logging.getLogger("pymongo.topology").setLevel(logging.ERROR)
+    logging.getLogger("pymongo.heartbeat").setLevel(logging.ERROR)
+    logging.getLogger("pymongo.pool").setLevel(logging.ERROR)
 
 
 def get_logger(name: str) -> Any:
