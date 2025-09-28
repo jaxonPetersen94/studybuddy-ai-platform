@@ -20,7 +20,7 @@ export async function authenticateUser(
     }
 
     // Validate token with User-Service
-    const response = await fetch(`${USER_SERVICE_URL}/api/v1/users/me`, {
+    const response = await fetch(`${USER_SERVICE_URL}/api/v1/users/profile`, {
       headers: {
         Authorization: authHeader,
       },
