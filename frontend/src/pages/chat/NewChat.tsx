@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   BookOpen,
   Brain,
@@ -14,7 +15,6 @@ import {
   Target,
   TrendingUp,
 } from 'lucide-react';
-import ChatBubble from '../../components/chat/ChatBubble';
 import ChatInput from '../../components/chat/ChatInput';
 import SidebarComponent from '../../components/layout/Sidebar';
 import PillButton from '../../components/ui/PillButton';
@@ -23,36 +23,24 @@ import { useChatStore } from '../../stores/ChatStore';
 import { QuickAction, Subject } from '../../types/uiTypes';
 
 const NewChat: React.FC = () => {
-  // Get state and actions from the store
+  const navigate = useNavigate();
+
   const {
-    // State
-    currentSession,
-    currentMessages,
-    hasStartedChat,
     sessions,
-    isTyping,
     selectedSubject,
     selectedAction,
     userText,
     isSending,
     error,
-
-    // Actions
-    sendMessage,
     loadSessions,
     setUserText,
     setSelectedSubject,
     setSelectedAction,
-    handleCopyMessage,
-    handleLikeMessage,
-    handleDislikeMessage,
-    handleRegenerateMessage,
-    resetChat,
+    createSessionAndSend,
   } = useChatStore();
 
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
 
-  // Load sessions on component mount
   useEffect(() => {
     loadSessions();
   }, []);
@@ -156,12 +144,8 @@ const NewChat: React.FC = () => {
   ];
 
   const formatTimestamp = (date: Date | string | number) => {
-    // Ensure date is a Date object
     const dateObj = date instanceof Date ? date : new Date(date);
-
-    // Check if the date is valid
     if (isNaN(dateObj.getTime())) {
-      console.error('Invalid date provided to formatTimestamp:', date);
       return 'Invalid date';
     }
 
@@ -185,18 +169,20 @@ const NewChat: React.FC = () => {
     if (!message.trim() || isSending) return;
 
     try {
-      await sendMessage({
+      // Create new session and send message
+      const newSession = await createSessionAndSend({
         content: message.trim(),
+        title:
+          message.trim().substring(0, 50) +
+          (message.trim().length > 50 ? '...' : ''),
         subject: selectedSubject || undefined,
         quickAction: selectedAction?.id || undefined,
       });
 
-      // Clear input after successful send
-      setUserText('');
-      setSelectedAction(null);
+      // Navigate to the new chat session
+      navigate(`/chat/${newSession.id}`);
     } catch (error) {
-      // Error handling is done in the store
-      console.error('Failed to send message:', error);
+      console.error('Failed to create chat:', error);
     }
   };
 
@@ -206,12 +192,10 @@ const NewChat: React.FC = () => {
 
   const handleMessageChange = (newMessage: string) => {
     if (selectedAction) {
-      // Extract user text by removing the action prompt prefix
       const promptWithSpace = selectedAction.prompt + ' ';
       if (newMessage.startsWith(promptWithSpace)) {
         setUserText(newMessage.substring(promptWithSpace.length));
       } else {
-        // If user deleted part of the prompt, clear the action
         setSelectedAction(null);
         setUserText(newMessage);
       }
@@ -220,7 +204,6 @@ const NewChat: React.FC = () => {
     }
   };
 
-  // Generate placeholder text based on selected subject or action
   const getPlaceholder = () => {
     if (selectedAction) {
       return `${selectedAction.description}...`;
@@ -232,9 +215,8 @@ const NewChat: React.FC = () => {
     return 'Ask me anything, upload a file, or describe what you want to study...';
   };
 
-  const handleNewChat = () => {
-    resetChat();
-    setSidebarOpen(false);
+  const handleSessionClick = (sessionId: string) => {
+    navigate(`/chat/${sessionId}`);
   };
 
   return (
@@ -249,7 +231,13 @@ const NewChat: React.FC = () => {
         <div className="p-4">
           <button
             className="w-full btn btn-primary mb-4 flex items-center justify-center space-x-2"
-            onClick={handleNewChat}
+            onClick={() => {
+              // Clear any selected state
+              setSelectedSubject(null);
+              setSelectedAction(null);
+              setUserText('');
+              setSidebarOpen(false);
+            }}
           >
             <MessageSquare className="w-4 h-4" />
             <span>New Chat</span>
@@ -263,6 +251,7 @@ const NewChat: React.FC = () => {
               <div
                 key={session.id}
                 className="p-3 rounded-lg border border-base-300/50 bg-base-100/50 hover:bg-base-200/50 transition-colors cursor-pointer group"
+                onClick={() => handleSessionClick(session.id)}
               >
                 <div className="flex items-start justify-between mb-2">
                   <h4 className="font-medium text-sm text-base-content truncate flex-1 mr-3">
@@ -287,109 +276,62 @@ const NewChat: React.FC = () => {
         </div>
       </SidebarComponent>
 
-      {/* Main Content */}
-      <div
-        className={`flex-1 flex flex-col ${
-          hasStartedChat
-            ? 'justify-end pb-6'
-            : 'justify-center items-center py-12'
-        }`}
-      >
-        {/* Chat Messages - only when chat has started */}
-        {hasStartedChat && (
-          <div className="flex-1 w-full max-w-4xl mx-auto px-6 overflow-y-auto">
-            <div className="space-y-4 py-6">
-              {currentMessages.map((msg) => (
-                <div key={msg.id} className="group">
-                  <ChatBubble
-                    message={msg.content}
-                    isUser={msg.isUser}
-                    timestamp={msg.timestamp}
-                    isTyping={msg.isTyping}
-                    onCopy={
-                      !msg.isUser
-                        ? () => handleCopyMessage(msg.content)
-                        : undefined
-                    }
-                    onLike={
-                      !msg.isUser ? () => handleLikeMessage(msg.id) : undefined
-                    }
-                    onDislike={
-                      !msg.isUser
-                        ? () => handleDislikeMessage(msg.id)
-                        : undefined
-                    }
-                    onRegenerate={
-                      !msg.isUser
-                        ? () => handleRegenerateMessage(msg.id)
-                        : undefined
-                    }
-                  />
-                </div>
+      {/* Main Content - Always centered for new chat */}
+      <div className="flex-1 flex flex-col justify-center items-center py-12">
+        <div className="max-w-4xl w-full px-6">
+          {/* Header */}
+          <div className="text-center mb-12">
+            <h1 className="text-4xl lg:text-5xl font-bold text-base-content mb-4 tracking-tight">
+              What would you like to{' '}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">
+                study
+              </span>
+              ?
+            </h1>
+            <p className="text-lg text-base-content/70 max-w-2xl mx-auto leading-relaxed">
+              StudyBuddy adapts to your learning style, creates personalized
+              study materials, and helps you master any subject through
+              intelligent practice and real-time feedback.
+            </p>
+          </div>
+
+          {/* Subject Selection */}
+          <div className="w-full mb-8">
+            <div className="text-sm font-mono text-base-content/60 uppercase tracking-wide mb-4 text-center">
+              Choose A Subject (Optional)
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+              {subjects.map((subject) => (
+                <SubjectCard
+                  key={subject.id}
+                  id={subject.id}
+                  name={subject.name}
+                  icon={subject.icon}
+                  color={subject.color}
+                  description={subject.description}
+                  isSelected={selectedSubject === subject.id}
+                  onClick={(id) =>
+                    setSelectedSubject(selectedSubject === id ? null : id)
+                  }
+                />
               ))}
             </div>
           </div>
-        )}
 
-        {/* Centered content container - only when chat hasn't started */}
-        {!hasStartedChat && (
-          <div className="max-w-4xl w-full px-6">
-            {/* Header */}
-            <div className="text-center mb-12">
-              <h1 className="text-4xl lg:text-5xl font-bold text-base-content mb-4 tracking-tight">
-                What would you like to{' '}
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">
-                  study
-                </span>
-                ?
-              </h1>
-              <p className="text-lg text-base-content/70 max-w-2xl mx-auto leading-relaxed">
-                StudyBuddy adapts to your learning style, creates personalized
-                study materials, and helps you master any subject through
-                intelligent practice and real-time feedback.
-              </p>
-            </div>
-
-            {/* Subject Selection */}
-            <div className="w-full mb-8">
-              <div className="text-sm font-mono text-base-content/60 uppercase tracking-wide mb-4 text-center">
-                Choose A Subject (Optional)
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                {subjects.map((subject) => (
-                  <SubjectCard
-                    key={subject.id}
-                    id={subject.id}
-                    name={subject.name}
-                    icon={subject.icon}
-                    color={subject.color}
-                    description={subject.description}
-                    isSelected={selectedSubject === subject.id}
-                    onClick={(id) =>
-                      setSelectedSubject(selectedSubject === id ? null : id)
-                    }
-                  />
-                ))}
-              </div>
-            </div>
+          {/* Chat Input */}
+          <div className="w-full mb-8">
+            <ChatInput
+              value={message}
+              onChange={handleMessageChange}
+              onSend={handleSendMessage}
+              placeholder={getPlaceholder()}
+              isTyping={isSending}
+              disabled={isSending}
+            />
           </div>
-        )}
 
-        {/* Chat Input Container - snaps from center to bottom */}
-        <div className="w-full max-w-4xl mx-auto px-6">
-          <ChatInput
-            value={message}
-            onChange={handleMessageChange}
-            onSend={handleSendMessage}
-            placeholder={getPlaceholder()}
-            isTyping={isTyping || isSending}
-            disabled={isSending}
-          />
-        </div>
-
-        {/* Quick Actions - only when chat hasn't started */}
-        {!hasStartedChat && (
-          <div className="max-w-4xl w-full px-6 mt-8">
+          {/* Quick Actions */}
+          <div className="w-full">
             <div className="text-sm font-mono text-base-content/60 uppercase tracking-wide mb-4 text-center">
               Quick Actions
             </div>
@@ -404,7 +346,7 @@ const NewChat: React.FC = () => {
               ))}
             </div>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

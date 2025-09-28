@@ -9,6 +9,7 @@ import AuthForm from './pages/auth/AuthForm';
 import ForgotPassword from './pages/auth/ForgotPassword';
 import ResetPassword from './pages/auth/ResetPassword';
 import NewChat from './pages/chat/NewChat';
+import ChatSession from './pages/chat/ChatSession';
 import UserSettings from './pages/user/UserSettings';
 import { useUserStore } from './stores/UserStore';
 import { useToastStore } from './stores/ToastStore';
@@ -47,11 +48,9 @@ function App() {
           <Route path="/" element={<HomeRoute />} />
           <Route path="/auth" element={<AuthForm />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
-
-          {/* Password reset route (not protected) */}
           <Route path="/reset-password/:token" element={<ResetPassword />} />
 
-          {/* Changed from /dashboard to /new */}
+          {/* New chat creation page */}
           <Route
             path="/new"
             element={
@@ -61,9 +60,17 @@ function App() {
             }
           />
 
-          {/* Keep /dashboard route for backward compatibility (optional) */}
-          <Route path="/dashboard" element={<Navigate to="/new" replace />} />
+          {/* Individual chat sessions */}
+          <Route
+            path="/chat/:sessionId"
+            element={
+              <ProtectedRoute>
+                <ChatSession />
+              </ProtectedRoute>
+            }
+          />
 
+          {/* User settings */}
           <Route
             path="/user-settings"
             element={
@@ -73,11 +80,11 @@ function App() {
             }
           />
 
-          <Route path="*" element={<ErrorBoundary />} />
+          {/* Catch all route */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
 
-      {/* Toast Container */}
       <ToastContainer toasts={toasts} position="top-center" />
     </div>
   );

@@ -45,6 +45,13 @@ interface ChatStore {
 
   // Session management actions
   createSession: (data?: CreateSessionRequest) => Promise<ChatSession>;
+  createSessionAndSend: (
+    data: SendMessageRequest & {
+      title?: string;
+      subject?: string;
+      quickAction?: string;
+    },
+  ) => Promise<ChatSession>;
   loadSession: (sessionId: string) => Promise<void>;
   loadSessions: (refresh?: boolean) => Promise<void>;
   updateSession: (
@@ -196,6 +203,52 @@ export const useChatStore = create<ChatStore>()(
         }
       },
 
+      // Combined create session and send message for new chat flow
+      createSessionAndSend: async (
+        data: SendMessageRequest & {
+          title?: string;
+          subject?: string;
+          quickAction?: string;
+        },
+      ) => {
+        set({ isSending: true, error: null });
+
+        try {
+          const token = get()._getAuthToken();
+
+          // Create session first
+          const newSession = await chatService.createSession(
+            {
+              title:
+                data.title ||
+                data.content.substring(0, 50) +
+                  (data.content.length > 50 ? '...' : ''),
+              subject: data.subject,
+              quickAction: data.quickAction,
+              initialMessage: data.content,
+            },
+            token,
+          );
+
+          set((state) => ({
+            currentSession: newSession,
+            sessions: [newSession, ...state.sessions],
+            hasStartedChat: true,
+            currentMessages: [],
+            isLoading: false,
+          }));
+
+          // Send the initial message
+          await get().sendMessage(data);
+
+          return newSession;
+        } catch (error: any) {
+          set({ isSending: false, isLoading: false });
+          await get()._handleApiError(error, 'create session and send message');
+          throw error;
+        }
+      },
+
       loadSession: async (sessionId: string) => {
         set({ isLoading: true, error: null });
 
@@ -206,7 +259,7 @@ export const useChatStore = create<ChatStore>()(
           set({
             currentSession: session,
             currentMessages: [],
-            hasStartedChat: false,
+            hasStartedChat: true, // Always true for existing sessions
             messagesPage: 1,
             hasMoreMessages: true,
             isLoading: false,
@@ -215,7 +268,7 @@ export const useChatStore = create<ChatStore>()(
           // Load messages for this session
           await get().loadMessages(sessionId, true);
         } catch (error: any) {
-          set({ isLoading: false });
+          set({ isLoading: false, currentSession: null });
           await get()._handleApiError(error, 'load session');
           throw error;
         }
@@ -355,24 +408,17 @@ export const useChatStore = create<ChatStore>()(
 
         try {
           const token = get()._getAuthToken();
-          let { currentSession } = get();
+          const { currentSession } = get();
 
-          // Ensure we have a current session
+          // Current session should exist when called from ChatSession component
           if (!currentSession) {
-            currentSession = await get().createSession({
-              title:
-                data.content.substring(0, 50) + // Changed from data.message
-                (data.content.length > 50 ? '...' : ''), // Changed from data.message
-              subject: data.subject,
-              quickAction: data.quickAction,
-              initialMessage: data.content, // Changed from data.message
-            });
+            throw new Error('No active session found');
           }
 
           // Add user message immediately
           const userMessage: ChatMessage = {
             id: `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            content: data.content, // Changed from message
+            content: data.content,
             isUser: true,
             timestamp: new Date(),
             attachments: data.attachments,
@@ -426,18 +472,11 @@ export const useChatStore = create<ChatStore>()(
 
         try {
           const token = get()._getAuthToken();
-          let { currentSession } = get();
+          const { currentSession } = get();
 
-          // Ensure we have a current session
+          // Current session should exist when streaming
           if (!currentSession) {
-            currentSession = await get().createSession({
-              title:
-                data.content.substring(0, 50) + // Changed from data.message
-                (data.content.length > 50 ? '...' : ''), // Changed from data.message
-              subject: data.subject,
-              quickAction: data.quickAction,
-              initialMessage: data.content, // Changed from data.message
-            });
+            throw new Error('No active session found');
           }
 
           // Add user message immediately
@@ -445,7 +484,7 @@ export const useChatStore = create<ChatStore>()(
             id: `temp-user-${Date.now()}-${Math.random()
               .toString(36)
               .substr(2, 9)}`,
-            content: data.content, // Changed from message
+            content: data.content,
             isUser: true,
             timestamp: new Date(),
             attachments: data.attachments,
@@ -456,7 +495,7 @@ export const useChatStore = create<ChatStore>()(
             id: `temp-assistant-${Date.now()}-${Math.random()
               .toString(36)
               .substr(2, 9)}`,
-            content: '', // Changed from message
+            content: '',
             isUser: false,
             timestamp: new Date(),
             isTyping: true,
@@ -482,7 +521,7 @@ export const useChatStore = create<ChatStore>()(
               set((state) => ({
                 currentMessages: state.currentMessages.map((msg) =>
                   msg.id === streamingMessage.id
-                    ? { ...msg, content: msg.content + tokenText } // Changed from message
+                    ? { ...msg, content: msg.content + tokenText }
                     : msg,
                 ),
               }));
