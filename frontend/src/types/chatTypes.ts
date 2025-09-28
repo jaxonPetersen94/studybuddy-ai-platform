@@ -2,7 +2,7 @@ import { ApiResponse } from './apiTypes';
 
 export interface ChatMessage {
   id: string;
-  content: string; // Changed from message
+  content: string;
   isUser: boolean;
   timestamp: Date;
   isTyping?: boolean;
@@ -31,7 +31,7 @@ export interface ChatMessageMetadata {
 export interface ChatSession {
   id: string;
   title: string;
-  lastMessage: string; // Keep as lastMessage (this refers to summary text)
+  lastMessage: string;
   timestamp: Date;
   isStarred: boolean;
   messageCount: number;
@@ -40,7 +40,7 @@ export interface ChatSession {
 }
 
 export interface SendMessageRequest {
-  content: string; // Changed from message
+  content: string;
   sessionId?: string;
   subject?: string;
   quickAction?: string;
@@ -53,7 +53,7 @@ export interface SendMessageRequest {
 
 export interface SendMessageData {
   id: string;
-  content: string; // Changed from message
+  content: string;
   timestamp: string;
   sessionId: string;
   metadata?: ChatMessageMetadata;
@@ -65,7 +65,7 @@ export interface CreateSessionRequest {
   title?: string;
   subject?: string;
   quickAction?: string;
-  initialMessage?: string; // Keep as initialMessage (this is a parameter name)
+  initialMessage?: string;
 }
 
 export interface CreateSessionResponse {

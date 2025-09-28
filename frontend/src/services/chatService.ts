@@ -34,7 +34,7 @@ export const chatService = {
         id: response.data.id,
         title: response.data.title,
         lastMessage: data.initialMessage || '',
-        timestamp: new Date(response.data.timestamp),
+        timestamp: new Date(response.timestamp),
         isStarred: false,
         messageCount: 0,
         subject: data.subject,
@@ -110,7 +110,7 @@ export const chatService = {
 
       return {
         ...response.data,
-        timestamp: new Date(response.data.timestamp),
+        timestamp: new Date(response.timestamp),
       };
     } catch (error: any) {
       if (error.status === 404) {
@@ -145,7 +145,7 @@ export const chatService = {
 
       return {
         ...response.data,
-        timestamp: new Date(response.data.timestamp),
+        timestamp: new Date(response.timestamp),
       };
     } catch (error: any) {
       if (error.status === 404) {
@@ -224,7 +224,7 @@ export const chatService = {
         id: response.data.id,
         content: response.data.content,
         isUser: true,
-        timestamp: new Date(response.data.timestamp),
+        timestamp: new Date(response.timestamp),
         attachments: data.attachments,
         metadata: response.data.metadata,
       };
@@ -318,7 +318,7 @@ export const chatService = {
 
       return {
         ...response.data,
-        timestamp: new Date(response.data.timestamp),
+        timestamp: new Date(response.timestamp),
       };
     } catch (error: any) {
       if (error.status === 404) {

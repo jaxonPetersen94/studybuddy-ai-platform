@@ -20,7 +20,7 @@ class AnalyticsService:
     
     def _get_db(self) -> AsyncIOMotorDatabase:
         """Get database connection"""
-        if not self.db:
+        if self.db is None:
             self.db = get_database()
         return self.db
     
