@@ -350,18 +350,18 @@ export const useChatStore = create<ChatStore>()(
           if (!currentSession) {
             currentSession = await get().createSession({
               title:
-                data.message.substring(0, 50) +
-                (data.message.length > 50 ? '...' : ''),
+                data.content.substring(0, 50) + // Changed from data.message
+                (data.content.length > 50 ? '...' : ''), // Changed from data.message
               subject: data.subject,
               quickAction: data.quickAction,
-              initialMessage: data.message,
+              initialMessage: data.content, // Changed from data.message
             });
           }
 
           // Add user message immediately
           const userMessage: ChatMessage = {
             id: `temp-${Date.now()}`,
-            message: data.message,
+            content: data.content, // Changed from message
             isUser: true,
             timestamp: new Date(),
             attachments: data.attachments,
@@ -421,18 +421,18 @@ export const useChatStore = create<ChatStore>()(
           if (!currentSession) {
             currentSession = await get().createSession({
               title:
-                data.message.substring(0, 50) +
-                (data.message.length > 50 ? '...' : ''),
+                data.content.substring(0, 50) + // Changed from data.message
+                (data.content.length > 50 ? '...' : ''), // Changed from data.message
               subject: data.subject,
               quickAction: data.quickAction,
-              initialMessage: data.message,
+              initialMessage: data.content, // Changed from data.message
             });
           }
 
           // Add user message immediately
           const userMessage: ChatMessage = {
             id: `temp-user-${Date.now()}`,
-            message: data.message,
+            content: data.content, // Changed from message
             isUser: true,
             timestamp: new Date(),
             attachments: data.attachments,
@@ -441,7 +441,7 @@ export const useChatStore = create<ChatStore>()(
           // Add streaming response placeholder
           const streamingMessage: ChatMessage = {
             id: `temp-assistant-${Date.now()}`,
-            message: '',
+            content: '', // Changed from message
             isUser: false,
             timestamp: new Date(),
             isTyping: true,
@@ -467,7 +467,7 @@ export const useChatStore = create<ChatStore>()(
               set((state) => ({
                 currentMessages: state.currentMessages.map((msg) =>
                   msg.id === streamingMessage.id
-                    ? { ...msg, message: msg.message + tokenText }
+                    ? { ...msg, content: msg.content + tokenText } // Changed from message
                     : msg,
                 ),
               }));

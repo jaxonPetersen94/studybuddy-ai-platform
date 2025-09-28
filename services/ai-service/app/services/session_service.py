@@ -17,7 +17,7 @@ class SessionService:
     def __init__(self):
         self.db = None
     
-    async def _get_db(self) -> AsyncIOMotorDatabase:
+    def _get_db(self) -> AsyncIOMotorDatabase:
         """Get database connection"""
         if self.db is None:
             self.db = get_database()
@@ -35,7 +35,7 @@ class SessionService:
             Dictionary containing the created session data
         """
         try:
-            db = await self._get_db()
+            db = self._get_db()
             
             # Create session document
             session_doc = {
@@ -79,7 +79,7 @@ class SessionService:
             Dictionary containing session data or None if not found
         """
         try:
-            db = await self._get_db()
+            db = self._get_db()
             
             # Find session with user ownership check
             session = await db.sessions.find_one({
@@ -129,7 +129,7 @@ class SessionService:
             Dictionary containing sessions and pagination info
         """
         try:
-            db = await self._get_db()
+            db = self._get_db()
             
             # Build query filter
             query_filter = {"user_id": user_id}
@@ -202,7 +202,7 @@ class SessionService:
             Dictionary containing updated session data or None if not found
         """
         try:
-            db = await self._get_db()
+            db = self._get_db()
             
             # Check if session exists and belongs to user
             existing_session = await self.get_session(session_id, user_id)
@@ -257,7 +257,7 @@ class SessionService:
             True if deleted successfully, False if not found
         """
         try:
-            db = await self._get_db()
+            db = self._get_db()
             
             # Check if session exists and belongs to user
             existing_session = await self.get_session(session_id, user_id)
@@ -303,7 +303,7 @@ class SessionService:
             Dictionary containing search results and pagination info
         """
         try:
-            db = await self._get_db()
+            db = self._get_db()
             
             # Create aggregation pipeline for searching sessions and their messages
             pipeline = [
@@ -486,7 +486,7 @@ class SessionService:
             Dictionary containing session statistics
         """
         try:
-            db = await self._get_db()
+            db = self._get_db()
             
             # Use aggregation pipeline to get comprehensive stats
             pipeline = [

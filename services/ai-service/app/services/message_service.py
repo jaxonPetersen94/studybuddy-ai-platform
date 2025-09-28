@@ -17,10 +17,10 @@ class MessageService:
     def __init__(self):
         self.db = None
     
-    async def _get_db(self) -> AsyncIOMotorDatabase:
+    def _get_db(self) -> AsyncIOMotorDatabase:
         """Get database connection"""
         if not self.db:
-            self.db = await get_database()
+            self.db = get_database()
         return self.db
     
     async def create_message(self, user_id: str, message_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -35,7 +35,7 @@ class MessageService:
             Dictionary containing the created message data
         """
         try:
-            db = await self._get_db()
+            db = self._get_db()
             
             # Validate session exists and belongs to user
             session_id = message_data.get("session_id")
@@ -97,7 +97,7 @@ class MessageService:
             Dictionary containing message data or None if not found
         """
         try:
-            db = await self._get_db()
+            db = self._get_db()
             
             # Find message with user access check
             message = await db.messages.find_one({
@@ -144,7 +144,7 @@ class MessageService:
             Dictionary containing messages and pagination info
         """
         try:
-            db = await self._get_db()
+            db = self._get_db()
             
             # Build query filter
             if session_id:
@@ -212,7 +212,7 @@ class MessageService:
             Dictionary containing messages and pagination info
         """
         try:
-            db = await self._get_db()
+            db = self._get_db()
             
             # Verify session ownership
             session = await db.sessions.find_one({
@@ -272,7 +272,7 @@ class MessageService:
             Dictionary containing updated message data or None if not found
         """
         try:
-            db = await self._get_db()
+            db = self._get_db()
             
             # Check if message exists and user has access
             existing_message = await self.get_message(message_id, user_id)
@@ -324,7 +324,7 @@ class MessageService:
             True if deleted successfully, False if not found
         """
         try:
-            db = await self._get_db()
+            db = self._get_db()
             
             # Get message to check ownership and get session_id
             existing_message = await self.get_message(message_id, user_id)
@@ -402,7 +402,7 @@ class MessageService:
             Dictionary containing feedback record
         """
         try:
-            db = await self._get_db()
+            db = self._get_db()
             
             # Verify message exists and user has access
             message = await self.get_message(message_id, user_id)
@@ -460,7 +460,7 @@ class MessageService:
             Dictionary containing search results and pagination info
         """
         try:
-            db = await self._get_db()
+            db = self._get_db()
             
             # Verify session ownership
             session = await db.sessions.find_one({
@@ -538,7 +538,7 @@ class MessageService:
             Dictionary containing deletion results
         """
         try:
-            db = await self._get_db()
+            db = self._get_db()
             
             deleted_count = 0
             failed_count = 0
@@ -598,7 +598,7 @@ class MessageService:
             Dictionary containing the message thread
         """
         try:
-            db = await self._get_db()
+            db = self._get_db()
             
             # Get the target message
             target_message = await self.get_message(message_id, user_id)
@@ -661,7 +661,7 @@ class MessageService:
             Dictionary containing message statistics
         """
         try:
-            db = await self._get_db()
+            db = self._get_db()
             
             # Get user's session IDs
             user_session_ids = await self._get_user_session_ids(user_id)
@@ -714,7 +714,7 @@ class MessageService:
     async def _get_user_session_ids(self, user_id: str) -> List[ObjectId]:
         """Get list of session IDs belonging to a user"""
         try:
-            db = await self._get_db()
+            db = self._get_db()
             
             cursor = db.sessions.find(
                 {"user_id": user_id},
@@ -736,7 +736,7 @@ class MessageService:
             session_id: ID of the session to update
         """
         try:
-            db = await self._get_db()
+            db = self._get_db()
             
             # Get message count and last message time using aggregation
             pipeline = [

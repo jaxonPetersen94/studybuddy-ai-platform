@@ -18,10 +18,10 @@ class AnalyticsService:
     def __init__(self):
         self.db = None
     
-    async def _get_db(self) -> AsyncIOMotorDatabase:
+    def _get_db(self) -> AsyncIOMotorDatabase:
         """Get database connection"""
         if not self.db:
-            self.db = await get_database()
+            self.db = get_database()
         return self.db
     
     async def get_session_analytics(self, session_id: str, user_id: str) -> Optional[Dict[str, Any]]:
@@ -36,7 +36,7 @@ class AnalyticsService:
             Dictionary containing session analytics or None if not found
         """
         try:
-            db = await self._get_db()
+            db = self._get_db()
             
             # Verify session ownership
             session = await db.sessions.find_one({
@@ -160,7 +160,7 @@ class AnalyticsService:
             Dictionary containing user statistics
         """
         try:
-            db = await self._get_db()
+            db = self._get_db()
             
             # Calculate date range
             end_date = datetime.now(timezone.utc)
@@ -267,7 +267,7 @@ class AnalyticsService:
             Dictionary containing system analytics
         """
         try:
-            db = await self._get_db()
+            db = self._get_db()
             
             # Verify admin permissions (implement based on your auth system)
             # This is a placeholder - implement actual admin check
@@ -378,7 +378,7 @@ class AnalyticsService:
             Dictionary containing trend data
         """
         try:
-            db = await self._get_db()
+            db = self._get_db()
             
             end_date = datetime.now(timezone.utc)
             start_date = end_date - timedelta(days=days)
@@ -453,7 +453,7 @@ class AnalyticsService:
     async def _get_session_hourly_distribution(self, session_id: str) -> List[Dict[str, Any]]:
         """Get hourly distribution of messages in a session"""
         try:
-            db = await self._get_db()
+            db = self._get_db()
             
             pipeline = [
                 {"$match": {"session_id": ObjectId(session_id)}},
@@ -479,7 +479,7 @@ class AnalyticsService:
     async def _get_user_usage_patterns(self, user_id: str, start_date: datetime, end_date: datetime) -> Dict[str, Any]:
         """Get user usage patterns (time of day, day of week, etc.)"""
         try:
-            db = await self._get_db()
+            db = self._get_db()
             user_obj_id = ObjectId(user_id)
             
             # Hour of day distribution
@@ -536,7 +536,7 @@ class AnalyticsService:
     async def _get_user_feedback_stats(self, user_id: str, start_date: datetime) -> Dict[str, Any]:
         """Get user feedback statistics"""
         try:
-            db = await self._get_db()
+            db = self._get_db()
             user_obj_id = ObjectId(user_id)
             
             pipeline = [
@@ -566,7 +566,7 @@ class AnalyticsService:
     async def _get_top_user_sessions(self, user_id: str, days: int) -> List[Dict[str, Any]]:
         """Get top sessions by activity for a user"""
         try:
-            db = await self._get_db()
+            db = self._get_db()
             user_obj_id = ObjectId(user_id)
             start_date = datetime.now(timezone.utc) - timedelta(days=days)
             
@@ -591,7 +591,7 @@ class AnalyticsService:
     async def _get_system_daily_activity(self, start_date: datetime, end_date: datetime) -> List[Dict[str, Any]]:
         """Get system-wide daily activity"""
         try:
-            db = await self._get_db()
+            db = self._get_db()
             
             pipeline = [
                 {"$match": {
@@ -628,7 +628,7 @@ class AnalyticsService:
     async def _get_top_users_by_activity(self, start_date: datetime, limit: int = 10) -> List[Dict[str, Any]]:
         """Get top users by activity"""
         try:
-            db = await self._get_db()
+            db = self._get_db()
             
             pipeline = [
                 {"$match": {"created_at": {"$gte": start_date}}},

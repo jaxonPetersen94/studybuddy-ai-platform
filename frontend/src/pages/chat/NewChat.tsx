@@ -186,7 +186,7 @@ const NewChat: React.FC = () => {
 
     try {
       await sendMessage({
-        message: message.trim(),
+        content: message.trim(),
         subject: selectedSubject || undefined,
         quickAction: selectedAction?.id || undefined,
       });
@@ -302,13 +302,13 @@ const NewChat: React.FC = () => {
               {currentMessages.map((msg) => (
                 <div key={msg.id} className="group">
                   <ChatBubble
-                    message={msg.message}
+                    message={msg.content}
                     isUser={msg.isUser}
                     timestamp={msg.timestamp}
                     isTyping={msg.isTyping}
                     onCopy={
                       !msg.isUser
-                        ? () => handleCopyMessage(msg.message)
+                        ? () => handleCopyMessage(msg.content)
                         : undefined
                     }
                     onLike={

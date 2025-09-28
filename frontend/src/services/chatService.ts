@@ -222,7 +222,7 @@ export const chatService = {
 
       return {
         id: response.data.id,
-        message: response.data.message,
+        content: response.data.content,
         isUser: true,
         timestamp: new Date(response.data.timestamp),
         attachments: data.attachments,

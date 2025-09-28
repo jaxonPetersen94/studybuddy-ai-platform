@@ -55,10 +55,10 @@ class AttachmentService:
         self.storage_path.mkdir(parents=True, exist_ok=True)
         logger.info("AttachmentService initialized with minimal processing capabilities")
     
-    async def _get_db(self) -> AsyncIOMotorDatabase:
+    def _get_db(self) -> AsyncIOMotorDatabase:
         """Get database connection"""
         if not self.db:
-            self.db = await get_database()
+            self.db = get_database()
         return self.db
     
     async def create_attachment(
@@ -79,7 +79,7 @@ class AttachmentService:
             Dictionary containing attachment information
         """
         try:
-            db = await self._get_db()
+            db = self._get_db()
             
             # Validate file
             await self._validate_file(file)
@@ -149,7 +149,7 @@ class AttachmentService:
     async def get_attachment(self, attachment_id: str, user_id: str) -> Optional[Dict[str, Any]]:
         """Get a specific attachment by ID"""
         try:
-            db = await self._get_db()
+            db = self._get_db()
             
             attachment = await db.attachments.find_one({
                 "_id": ObjectId(attachment_id),
@@ -183,7 +183,7 @@ class AttachmentService:
     ) -> Dict[str, Any]:
         """Get user's file attachments with optional filtering"""
         try:
-            db = await self._get_db()
+            db = self._get_db()
             
             # Build query filter
             query_filter = {"user_id": user_id}
@@ -225,7 +225,7 @@ class AttachmentService:
     async def delete_attachment(self, attachment_id: str, user_id: str) -> bool:
         """Delete an attachment and its file"""
         try:
-            db = await self._get_db()
+            db = self._get_db()
             
             # Get attachment info first
             attachment = await self.get_attachment(attachment_id, user_id)
@@ -416,7 +416,7 @@ class AttachmentService:
     async def get_attachment_stats(self, user_id: str) -> Dict[str, Any]:
         """Get attachment statistics for a user"""
         try:
-            db = await self._get_db()
+            db = self._get_db()
             
             pipeline = [
                 {"$match": {"user_id": user_id}},

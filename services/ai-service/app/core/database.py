@@ -1,5 +1,4 @@
-from motor.motor_asyncio import AsyncIOMotorClient
-from pymongo.database import Database
+from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from app.core.config import get_settings
 
 # Singleton client
@@ -19,7 +18,7 @@ def get_client() -> AsyncIOMotorClient:
     return _client
 
 
-def get_database() -> Database:
+def get_database() -> AsyncIOMotorDatabase:
     """
     Return the MongoDB database instance defined in settings.
     """

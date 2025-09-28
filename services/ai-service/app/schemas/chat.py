@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Any, Dict, List, Optional
 
 class SessionCreate(BaseModel):
@@ -10,7 +10,7 @@ class SessionUpdate(BaseModel):
     metadata: Optional[Dict[str, Any]] = None
 
 class MessageCreate(BaseModel):
-    session_id: str
+    session_id: str = Field(alias="sessionId")
     content: str
     role: str = "user"
     attachments: Optional[List[str]] = None
@@ -32,6 +32,6 @@ class BulkDeleteRequest(BaseModel):
     ids: List[str]
 
 class StreamMessageRequest(BaseModel):
-    session_id: str
+    session_id: str = Field(alias="sessionId")
     content: str
     parameters: Optional[Dict[str, Any]] = None
