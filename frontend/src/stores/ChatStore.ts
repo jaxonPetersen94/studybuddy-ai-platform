@@ -238,14 +238,25 @@ export const useChatStore = create<ChatStore>()(
             20,
           );
 
-          set((state) => ({
-            sessions: refresh
+          set((state) => {
+            const allSessions = refresh
               ? response.sessions
-              : [...state.sessions, ...response.sessions],
-            hasMoreSessions: response.hasMore,
-            sessionsPage: sessionsPage + 1,
-            sessionsLoading: false,
-          }));
+              : [...state.sessions, ...response.sessions];
+
+            // Remove duplicates using Map - keeps the latest version of each session
+            const uniqueSessions = Array.from(
+              new Map(
+                allSessions.map((session) => [session.id, session]),
+              ).values(),
+            );
+
+            return {
+              sessions: uniqueSessions,
+              hasMoreSessions: response.hasMore,
+              sessionsPage: sessionsPage + 1,
+              sessionsLoading: false,
+            };
+          });
         } catch (error: any) {
           set({ sessionsLoading: false });
           await get()._handleApiError(error, 'load sessions');
@@ -360,7 +371,7 @@ export const useChatStore = create<ChatStore>()(
 
           // Add user message immediately
           const userMessage: ChatMessage = {
-            id: `temp-${Date.now()}`,
+            id: `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
             content: data.content, // Changed from message
             isUser: true,
             timestamp: new Date(),
@@ -431,7 +442,9 @@ export const useChatStore = create<ChatStore>()(
 
           // Add user message immediately
           const userMessage: ChatMessage = {
-            id: `temp-user-${Date.now()}`,
+            id: `temp-user-${Date.now()}-${Math.random()
+              .toString(36)
+              .substr(2, 9)}`,
             content: data.content, // Changed from message
             isUser: true,
             timestamp: new Date(),
@@ -440,7 +453,9 @@ export const useChatStore = create<ChatStore>()(
 
           // Add streaming response placeholder
           const streamingMessage: ChatMessage = {
-            id: `temp-assistant-${Date.now()}`,
+            id: `temp-assistant-${Date.now()}-${Math.random()
+              .toString(36)
+              .substr(2, 9)}`,
             content: '', // Changed from message
             isUser: false,
             timestamp: new Date(),

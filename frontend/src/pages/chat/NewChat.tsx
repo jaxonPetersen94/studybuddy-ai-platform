@@ -55,7 +55,7 @@ const NewChat: React.FC = () => {
   // Load sessions on component mount
   useEffect(() => {
     loadSessions();
-  }, [loadSessions]);
+  }, []);
 
   // Learning-focused subjects
   const subjects: Subject[] = [
