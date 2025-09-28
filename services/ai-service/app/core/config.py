@@ -32,6 +32,21 @@ class Settings(BaseSettings):
     
     # JWT Configuration
     jwt_secret: str = Field(..., alias="JWT_SECRET", description="Secret key for JWT token signing")
+    
+    # Database - MongoDB
+    mongo_uri: str = Field(default="mongodb://localhost:27017", alias="MONGO_URI")
+    mongo_db_name: str = Field(default="studybuddy_ai", alias="MONGO_DB_NAME")
+    
+    # AI Configuration
+    ai_request_timeout: Optional[float] = Field(default=60.0, alias="AI_REQUEST_TIMEOUT")
+    default_ai_model: Optional[str] = Field(default="gpt-4", alias="DEFAULT_AI_MODEL")
+    ai_max_tokens: Optional[int] = Field(default=4000, alias="AI_MAX_TOKENS")
+    ai_temperature: Optional[float] = Field(default=0.7, alias="AI_TEMPERATURE")
+    
+    # API Keys for AI Providers
+    openai_api_key: Optional[str] = Field(default=None, alias="OPENAI_API_KEY")
+    anthropic_api_key: Optional[str] = Field(default=None, alias="ANTHROPIC_API_KEY")
+    google_api_key: Optional[str] = Field(default=None, alias="GOOGLE_API_KEY")
 
 
 @lru_cache

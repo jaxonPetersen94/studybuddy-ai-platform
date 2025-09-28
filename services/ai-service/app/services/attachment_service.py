@@ -8,20 +8,19 @@ from typing import Dict, List, Optional, Any, BinaryIO
 from pathlib import Path
 import aiofiles
 from fastapi import UploadFile, HTTPException
-from PIL import Image
-import magic
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from bson import ObjectId
 from app.core.database import get_database
 from app.core.config import get_settings
 from app.core.logging import get_logger
 
+# Only safe imports - no heavy C extensions
 settings = get_settings()
 logger = get_logger(__name__)
 
 
 class AttachmentService:
-    """Service for handling file attachments in chat"""
+    """Service for handling file attachments in chat - minimal version"""
     
     # File size limits (in bytes)
     MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
@@ -54,6 +53,7 @@ class AttachmentService:
         self.db = None
         self.storage_path = Path(settings.UPLOAD_DIR or "./uploads")
         self.storage_path.mkdir(parents=True, exist_ok=True)
+        logger.info("AttachmentService initialized with minimal processing capabilities")
     
     async def _get_db(self) -> AsyncIOMotorDatabase:
         """Get database connection"""
@@ -94,15 +94,15 @@ class AttachmentService:
             # Create user directory if it doesn't exist
             file_path.parent.mkdir(parents=True, exist_ok=True)
             
-            # Detect content type
-            content_type = await self._detect_content_type(file)
+            # Detect content type (using mimetypes only)
+            content_type = self._detect_content_type_safe(file.filename)
             file_category = self._categorize_file(content_type)
             
             # Save file to disk
             await self._save_file_to_disk(file, file_path)
             
-            # Process file based on type
-            processed_metadata = await self._process_file(file_path, content_type, metadata or {})
+            # Basic metadata processing (no heavy libraries)
+            processed_metadata = await self._process_file_basic(file_path, content_type, metadata or {})
             
             # Create attachment record
             attachment_data = {
@@ -147,16 +147,7 @@ class AttachmentService:
             raise
     
     async def get_attachment(self, attachment_id: str, user_id: str) -> Optional[Dict[str, Any]]:
-        """
-        Get a specific attachment by ID
-        
-        Args:
-            attachment_id: ID of the attachment to retrieve
-            user_id: ID of the user requesting the attachment
-            
-        Returns:
-            Dictionary containing attachment data or None if not found
-        """
+        """Get a specific attachment by ID"""
         try:
             db = await self._get_db()
             
@@ -190,18 +181,7 @@ class AttachmentService:
         offset: int = 0,
         category: Optional[str] = None
     ) -> Dict[str, Any]:
-        """
-        Get user's file attachments with optional filtering
-        
-        Args:
-            user_id: ID of the user
-            limit: Maximum number of attachments to return
-            offset: Number of attachments to skip
-            category: Optional filter by file category
-            
-        Returns:
-            Dictionary containing attachments and pagination info
-        """
+        """Get user's file attachments with optional filtering"""
         try:
             db = await self._get_db()
             
@@ -243,16 +223,7 @@ class AttachmentService:
             raise
     
     async def delete_attachment(self, attachment_id: str, user_id: str) -> bool:
-        """
-        Delete an attachment and its file
-        
-        Args:
-            attachment_id: ID of the attachment to delete
-            user_id: ID of the user deleting the attachment
-            
-        Returns:
-            True if deleted successfully, False if not found
-        """
+        """Delete an attachment and its file"""
         try:
             db = await self._get_db()
             
@@ -286,16 +257,7 @@ class AttachmentService:
             raise
     
     async def get_attachment_content(self, attachment_id: str, user_id: str) -> Optional[bytes]:
-        """
-        Get the raw content of an attachment file
-        
-        Args:
-            attachment_id: ID of the attachment
-            user_id: ID of the user
-            
-        Returns:
-            File content as bytes or None if not found
-        """
+        """Get the raw content of an attachment file"""
         try:
             attachment = await self.get_attachment(attachment_id, user_id)
             if not attachment or not attachment.get("file_exists", False):
@@ -313,16 +275,7 @@ class AttachmentService:
             raise
     
     async def get_attachment_text_content(self, attachment_id: str, user_id: str) -> Optional[str]:
-        """
-        Extract text content from an attachment (for text files, PDFs, etc.)
-        
-        Args:
-            attachment_id: ID of the attachment
-            user_id: ID of the user
-            
-        Returns:
-            Extracted text content or None if not possible
-        """
+        """Extract text content from an attachment (basic text files only)"""
         try:
             attachment = await self.get_attachment(attachment_id, user_id)
             if not attachment:
@@ -334,16 +287,15 @@ class AttachmentService:
             if not file_path.exists():
                 return None
             
-            # Handle different file types
+            # Handle only basic text files for now
             if content_type.startswith("text/"):
-                async with aiofiles.open(file_path, 'r', encoding='utf-8') as f:
-                    return await f.read()
-            
-            elif content_type == "application/pdf":
-                return await self._extract_pdf_text(file_path)
-            
-            elif content_type in ["application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"]:
-                return await self._extract_word_text(file_path)
+                try:
+                    async with aiofiles.open(file_path, 'r', encoding='utf-8') as f:
+                        return await f.read()
+                except UnicodeDecodeError:
+                    # Try with different encoding
+                    async with aiofiles.open(file_path, 'r', encoding='latin-1') as f:
+                        return await f.read()
             
             elif content_type == "application/json":
                 async with aiofiles.open(file_path, 'r', encoding='utf-8') as f:
@@ -351,6 +303,8 @@ class AttachmentService:
                     import json
                     return json.dumps(json.loads(content), indent=2)
             
+            # For other file types, return None for now
+            # Can be enhanced later when heavy libraries are working
             return None
             
         except Exception as e:
@@ -381,23 +335,10 @@ class AttachmentService:
                 detail=f"File type {file_extension} not allowed"
             )
     
-    async def _detect_content_type(self, file: UploadFile) -> str:
-        """Detect the actual content type of the file"""
-        # Reset file position
-        await file.seek(0)
-        
-        # Read first chunk for detection
-        chunk = await file.read(1024)
-        await file.seek(0)
-        
-        # Use python-magic for detection
-        try:
-            detected_type = magic.from_buffer(chunk, mime=True)
-            return detected_type
-        except Exception:
-            # Fallback to filename-based detection
-            content_type, _ = mimetypes.guess_type(file.filename)
-            return content_type or "application/octet-stream"
+    def _detect_content_type_safe(self, filename: str) -> str:
+        """Detect content type using only mimetypes (no magic)"""
+        content_type, _ = mimetypes.guess_type(filename)
+        return content_type or "application/octet-stream"
     
     def _categorize_file(self, content_type: str) -> str:
         """Categorize file based on content type"""
@@ -440,173 +381,40 @@ class AttachmentService:
         
         await file.seek(0)
     
-    async def _process_file(self, file_path: Path, content_type: str, metadata: Dict[str, Any]) -> Dict[str, Any]:
-        """Process file based on its type and extract metadata"""
+    async def _process_file_basic(self, file_path: Path, content_type: str, metadata: Dict[str, Any]) -> Dict[str, Any]:
+        """Basic file processing without heavy libraries"""
         processed_metadata = metadata.copy()
         
         try:
-            if content_type.startswith("image/"):
-                processed_metadata.update(await self._process_image(file_path))
-            elif content_type == "application/pdf":
-                processed_metadata.update(await self._process_pdf(file_path))
-            elif content_type.startswith("audio/"):
-                processed_metadata.update(await self._process_audio(file_path))
-            elif content_type.startswith("video/"):
-                processed_metadata.update(await self._process_video(file_path))
+            # Add basic file stats
+            stat = file_path.stat()
+            processed_metadata.update({
+                "file_size_bytes": stat.st_size,
+                "created_timestamp": stat.st_ctime,
+                "modified_timestamp": stat.st_mtime,
+                "processing_mode": "basic"  # Indicates minimal processing
+            })
+            
+            # Basic text file processing
+            if content_type.startswith("text/"):
+                try:
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        content = f.read(1000)  # First 1000 chars
+                        processed_metadata.update({
+                            "preview_text": content,
+                            "estimated_lines": content.count('\n') + 1,
+                            "has_content": len(content.strip()) > 0
+                        })
+                except Exception:
+                    pass
             
         except Exception as e:
-            logger.warning(f"Error processing file {file_path}: {str(e)}")
+            logger.warning(f"Error in basic file processing for {file_path}: {str(e)}")
         
         return processed_metadata
     
-    async def _process_image(self, file_path: Path) -> Dict[str, Any]:
-        """Process image file and extract metadata"""
-        try:
-            with Image.open(file_path) as img:
-                metadata = {
-                    "width": img.width,
-                    "height": img.height,
-                    "format": img.format,
-                    "mode": img.mode
-                }
-                
-                # Extract EXIF data if available
-                if hasattr(img, '_getexif') and img._getexif():
-                    exif = img._getexif()
-                    if exif:
-                        metadata["has_exif"] = True
-                        # Add basic EXIF info (avoid sensitive location data)
-                        if 306 in exif:  # DateTime
-                            metadata["date_taken"] = str(exif[306])
-                
-                return metadata
-        except Exception as e:
-            logger.warning(f"Error processing image {file_path}: {str(e)}")
-            return {}
-    
-    async def _process_pdf(self, file_path: Path) -> Dict[str, Any]:
-        """Process PDF file and extract metadata"""
-        try:
-            import PyPDF2
-            
-            with open(file_path, 'rb') as f:
-                pdf_reader = PyPDF2.PdfReader(f)
-                
-                metadata = {
-                    "page_count": len(pdf_reader.pages),
-                    "has_text": True
-                }
-                
-                # Extract PDF metadata
-                if pdf_reader.metadata:
-                    pdf_meta = pdf_reader.metadata
-                    if pdf_meta.title:
-                        metadata["title"] = pdf_meta.title
-                    if pdf_meta.author:
-                        metadata["author"] = pdf_meta.author
-                    if pdf_meta.creator:
-                        metadata["creator"] = pdf_meta.creator
-                
-                return metadata
-        except Exception as e:
-            logger.warning(f"Error processing PDF {file_path}: {str(e)}")
-            return {"page_count": 0}
-    
-    async def _process_audio(self, file_path: Path) -> Dict[str, Any]:
-        """Process audio file and extract metadata"""
-        try:
-            import mutagen
-            
-            audio_file = mutagen.File(file_path)
-            if audio_file:
-                metadata = {
-                    "duration": round(audio_file.info.length, 2) if hasattr(audio_file, 'info') else 0,
-                    "bitrate": getattr(audio_file.info, 'bitrate', 0),
-                    "sample_rate": getattr(audio_file.info, 'sample_rate', 0)
-                }
-                
-                # Extract tags
-                if audio_file.tags:
-                    if 'TIT2' in audio_file.tags:  # Title
-                        metadata["title"] = str(audio_file.tags['TIT2'][0])
-                    if 'TPE1' in audio_file.tags:  # Artist
-                        metadata["artist"] = str(audio_file.tags['TPE1'][0])
-                
-                return metadata
-        except Exception as e:
-            logger.warning(f"Error processing audio {file_path}: {str(e)}")
-            return {}
-    
-    async def _process_video(self, file_path: Path) -> Dict[str, Any]:
-        """Process video file and extract metadata"""
-        try:
-            import cv2
-            
-            cap = cv2.VideoCapture(str(file_path))
-            
-            if cap.isOpened():
-                fps = cap.get(cv2.CAP_PROP_FPS)
-                frame_count = cap.get(cv2.CAP_PROP_FRAME_COUNT)
-                width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-                height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-                
-                duration = frame_count / fps if fps > 0 else 0
-                
-                metadata = {
-                    "width": width,
-                    "height": height,
-                    "fps": round(fps, 2),
-                    "duration": round(duration, 2),
-                    "frame_count": int(frame_count)
-                }
-                
-                cap.release()
-                return metadata
-        except Exception as e:
-            logger.warning(f"Error processing video {file_path}: {str(e)}")
-            return {}
-    
-    async def _extract_pdf_text(self, file_path: Path) -> str:
-        """Extract text content from PDF"""
-        try:
-            import PyPDF2
-            
-            text = ""
-            with open(file_path, 'rb') as f:
-                pdf_reader = PyPDF2.PdfReader(f)
-                for page in pdf_reader.pages:
-                    text += page.extract_text() + "\n"
-            
-            return text.strip()
-        except Exception as e:
-            logger.warning(f"Error extracting PDF text from {file_path}: {str(e)}")
-            return ""
-    
-    async def _extract_word_text(self, file_path: Path) -> str:
-        """Extract text content from Word documents"""
-        try:
-            import docx
-            
-            doc = docx.Document(file_path)
-            text = ""
-            for paragraph in doc.paragraphs:
-                text += paragraph.text + "\n"
-            
-            return text.strip()
-        except Exception as e:
-            logger.warning(f"Error extracting Word text from {file_path}: {str(e)}")
-            return ""
-    
     async def get_attachment_stats(self, user_id: str) -> Dict[str, Any]:
-        """
-        Get attachment statistics for a user
-        
-        Args:
-            user_id: ID of the user
-            
-        Returns:
-            Dictionary containing attachment statistics
-        """
+        """Get attachment statistics for a user"""
         try:
             db = await self._get_db()
             

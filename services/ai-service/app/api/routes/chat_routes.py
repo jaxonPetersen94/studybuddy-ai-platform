@@ -28,11 +28,11 @@ router = APIRouter(prefix="/api/v1/chats", tags=["chats"])
 logger = get_logger(__name__)
 
 # Initialize services (you can also use dependency injection)
-chat_service = ChatService()
-session_service = SessionService()
-message_service = MessageService()
-attachment_service = AttachmentService()
 analytics_service = AnalyticsService()
+attachment_service = AttachmentService()
+chat_service = ChatService()
+message_service = MessageService()
+session_service = SessionService()
 
 # ============================================================================
 # Session Management Routes

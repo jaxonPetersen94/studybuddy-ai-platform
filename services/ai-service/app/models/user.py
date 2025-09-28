@@ -1,23 +1,9 @@
 from datetime import datetime
 from typing import Optional, List
 from pydantic import BaseModel, Field
-from bson import ObjectId
 
-class PyObjectId(ObjectId):
-    """Custom ObjectId class for Pydantic compatibility"""
-    @classmethod
-    def __get_validators__(cls):
-        yield cls.validate
+from app.core.mongodb import MongoBaseConfig
 
-    @classmethod
-    def validate(cls, v):
-        if not ObjectId.is_valid(v):
-            raise ValueError("Invalid ObjectId")
-        return ObjectId(v)
-
-    @classmethod
-    def __modify_schema__(cls, field_schema):
-        field_schema.update(type="string")
 
 class User(BaseModel):
     """
@@ -32,11 +18,7 @@ class User(BaseModel):
     # Optional fields that might be forwarded from gateway
     roles: Optional[List[str]] = Field(default_factory=list, description="User roles")
     
-    class Config:
-        # Allow population by field name for compatibility
-        allow_population_by_field_name = True
-        # JSON encoders for ObjectId if needed
-        json_encoders = {ObjectId: str}
+    class Config(MongoBaseConfig):
         # Example data for documentation
         schema_extra = {
             "example": {
