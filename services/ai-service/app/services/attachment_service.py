@@ -107,7 +107,7 @@ class AttachmentService:
             # Create attachment record
             attachment_data = {
                 "_id": ObjectId(),
-                "user_id": ObjectId(user_id),
+                "user_id": user_id,
                 "filename": file.filename,
                 "original_filename": file.filename,
                 "stored_filename": stored_filename,
@@ -153,7 +153,7 @@ class AttachmentService:
             
             attachment = await db.attachments.find_one({
                 "_id": ObjectId(attachment_id),
-                "user_id": ObjectId(user_id)
+                "user_id": user_id
             })
             
             if not attachment:
@@ -186,7 +186,7 @@ class AttachmentService:
             db = await self._get_db()
             
             # Build query filter
-            query_filter = {"user_id": ObjectId(user_id)}
+            query_filter = {"user_id": user_id}
             
             if category:
                 query_filter["category"] = category
@@ -243,7 +243,7 @@ class AttachmentService:
             # Delete from database
             result = await db.attachments.delete_one({
                 "_id": ObjectId(attachment_id),
-                "user_id": ObjectId(user_id)
+                "user_id": user_id
             })
             
             if result.deleted_count > 0:
@@ -419,7 +419,7 @@ class AttachmentService:
             db = await self._get_db()
             
             pipeline = [
-                {"$match": {"user_id": ObjectId(user_id)}},
+                {"$match": {"user_id": user_id}},
                 {"$group": {
                     "_id": None,
                     "total_attachments": {"$sum": 1},

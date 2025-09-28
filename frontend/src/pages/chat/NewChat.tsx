@@ -52,10 +52,10 @@ const NewChat: React.FC = () => {
 
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
 
-  // // Load sessions on component mount
-  // useEffect(() => {
-  //   loadSessions();
-  // }, [loadSessions]);
+  // Load sessions on component mount
+  useEffect(() => {
+    loadSessions();
+  }, [loadSessions]);
 
   // Learning-focused subjects
   const subjects: Subject[] = [

@@ -19,8 +19,8 @@ class SessionService:
     
     async def _get_db(self) -> AsyncIOMotorDatabase:
         """Get database connection"""
-        if not self.db:
-            self.db = await get_database()
+        if self.db is None:
+            self.db = get_database()
         return self.db
     
     async def create_session(self, user_id: str, session_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -40,7 +40,7 @@ class SessionService:
             # Create session document
             session_doc = {
                 "_id": ObjectId(),
-                "user_id": ObjectId(user_id),
+                "user_id": user_id,
                 "title": session_data.get("title", "New Chat"),
                 "model_config": session_data.get("model_config", {}),
                 "metadata": session_data.get("metadata", {}),
@@ -84,7 +84,7 @@ class SessionService:
             # Find session with user ownership check
             session = await db.sessions.find_one({
                 "_id": ObjectId(session_id),
-                "user_id": ObjectId(user_id)
+                "user_id": user_id
             })
             
             if not session:
@@ -132,7 +132,7 @@ class SessionService:
             db = await self._get_db()
             
             # Build query filter
-            query_filter = {"user_id": ObjectId(user_id)}
+            query_filter = {"user_id": user_id}
             
             if search:
                 query_filter["title"] = {"$regex": search, "$options": "i"}
@@ -230,7 +230,7 @@ class SessionService:
             result = await db.sessions.update_one(
                 {
                     "_id": ObjectId(session_id),
-                    "user_id": ObjectId(user_id)
+                    "user_id": user_id
                 },
                 {"$set": update_doc}
             )
@@ -270,7 +270,7 @@ class SessionService:
             # Delete the session
             result = await db.sessions.delete_one({
                 "_id": ObjectId(session_id),
-                "user_id": ObjectId(user_id)
+                "user_id": user_id
             })
             
             if result.deleted_count > 0:
@@ -307,7 +307,7 @@ class SessionService:
             
             # Create aggregation pipeline for searching sessions and their messages
             pipeline = [
-                {"$match": {"user_id": ObjectId(user_id)}},
+                {"$match": {"user_id": user_id}},
                 {"$lookup": {
                     "from": "messages",
                     "localField": "_id",
@@ -378,7 +378,7 @@ class SessionService:
             
             # Get total count for search results
             count_pipeline = [
-                {"$match": {"user_id": ObjectId(user_id)}},
+                {"$match": {"user_id": user_id}},
                 {"$lookup": {
                     "from": "messages",
                     "localField": "_id",
@@ -490,7 +490,7 @@ class SessionService:
             
             # Use aggregation pipeline to get comprehensive stats
             pipeline = [
-                {"$match": {"user_id": ObjectId(user_id)}},
+                {"$match": {"user_id": user_id}},
                 {"$lookup": {
                     "from": "messages",
                     "localField": "_id",
@@ -514,7 +514,7 @@ class SessionService:
             # Get recent activity (sessions in last 7 days)
             seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
             recent_count = await db.sessions.count_documents({
-                "user_id": ObjectId(user_id),
+                "user_id": user_id,
                 "last_activity": {"$gte": seven_days_ago}
             })
             

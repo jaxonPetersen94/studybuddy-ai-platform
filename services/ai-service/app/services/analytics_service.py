@@ -41,7 +41,7 @@ class AnalyticsService:
             # Verify session ownership
             session = await db.sessions.find_one({
                 "_id": ObjectId(session_id),
-                "user_id": ObjectId(user_id)
+                "user_id": user_id
             })
             
             if not session:

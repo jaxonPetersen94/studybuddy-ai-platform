@@ -42,7 +42,7 @@ class MessageService:
             if session_id:
                 session = await db.sessions.find_one({
                     "_id": ObjectId(session_id),
-                    "user_id": ObjectId(user_id)
+                    "user_id": user_id
                 })
                 if not session:
                     raise ValueError("Session not found or access denied")
@@ -51,7 +51,7 @@ class MessageService:
             message_doc = {
                 "_id": ObjectId(),
                 "session_id": ObjectId(session_id) if session_id else None,
-                "user_id": ObjectId(user_id),
+                "user_id": user_id,
                 "role": message_data.get("role", "user"),
                 "content": message_data.get("content", ""),
                 "attachments": message_data.get("attachments", []),
@@ -103,7 +103,7 @@ class MessageService:
             message = await db.messages.find_one({
                 "_id": ObjectId(message_id),
                 "$or": [
-                    {"user_id": ObjectId(user_id)},
+                    {"user_id": user_id},
                     {"session_id": {"$in": await self._get_user_session_ids(user_id)}}
                 ]
             })
@@ -150,7 +150,7 @@ class MessageService:
             if session_id:
                 # Session-specific query
                 query_filter = {
-                    "user_id": ObjectId(user_id),
+                    "user_id": user_id,
                     "session_id": ObjectId(session_id)
                 }
             else:
@@ -158,7 +158,7 @@ class MessageService:
                 user_session_ids = await self._get_user_session_ids(user_id)
                 query_filter = {
                     "$or": [
-                        {"user_id": ObjectId(user_id)},
+                        {"user_id": user_id},
                         {"session_id": {"$in": user_session_ids}}
                     ]
                 }
@@ -217,7 +217,7 @@ class MessageService:
             # Verify session ownership
             session = await db.sessions.find_one({
                 "_id": ObjectId(session_id),
-                "user_id": ObjectId(user_id)
+                "user_id": user_id
             })
             if not session:
                 raise ValueError("Session not found or access denied")
@@ -413,7 +413,7 @@ class MessageService:
             feedback_doc = {
                 "_id": ObjectId(),
                 "message_id": ObjectId(message_id),
-                "user_id": ObjectId(user_id),
+                "user_id": user_id,
                 "rating": feedback_data.get("rating"),
                 "feedback_type": feedback_data.get("type", "general"),
                 "comment": feedback_data.get("comment", ""),
@@ -465,7 +465,7 @@ class MessageService:
             # Verify session ownership
             session = await db.sessions.find_one({
                 "_id": ObjectId(session_id),
-                "user_id": ObjectId(user_id)
+                "user_id": user_id
             })
             if not session:
                 raise ValueError("Session not found or access denied")
@@ -670,7 +670,7 @@ class MessageService:
             pipeline = [
                 {"$match": {
                     "$or": [
-                        {"user_id": ObjectId(user_id)},
+                        {"user_id": user_id},
                         {"session_id": {"$in": user_session_ids}}
                     ]
                 }},
@@ -697,7 +697,7 @@ class MessageService:
             
             recent_count = await db.messages.count_documents({
                 "$or": [
-                    {"user_id": ObjectId(user_id)},
+                    {"user_id": user_id},
                     {"session_id": {"$in": user_session_ids}}
                 ],
                 "created_at": {"$gte": seven_days_ago}
@@ -717,7 +717,7 @@ class MessageService:
             db = await self._get_db()
             
             cursor = db.sessions.find(
-                {"user_id": ObjectId(user_id)},
+                {"user_id": user_id},
                 {"_id": 1}
             )
             
