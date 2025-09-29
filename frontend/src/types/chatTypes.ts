@@ -3,7 +3,7 @@ import { ApiResponse } from './apiTypes';
 export interface ChatMessage {
   id: string;
   content: string;
-  isUser: boolean;
+  role: 'user' | 'assistant';
   timestamp: Date;
   isTyping?: boolean;
   attachments?: ChatAttachment[];

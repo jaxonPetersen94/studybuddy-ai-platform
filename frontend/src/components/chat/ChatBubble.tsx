@@ -3,7 +3,7 @@ import { User, Bot, Copy, ThumbsUp, ThumbsDown, RotateCcw } from 'lucide-react';
 
 interface ChatBubbleProps {
   message: string;
-  isUser: boolean;
+  role: 'user' | 'assistant';
   timestamp?: Date;
   isTyping?: boolean;
   onCopy?: () => void;
@@ -17,7 +17,7 @@ interface ChatBubbleProps {
 
 const ChatBubble: React.FC<ChatBubbleProps> = ({
   message,
-  isUser,
+  role,
   timestamp,
   isTyping = false,
   onCopy,
@@ -28,6 +28,8 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({
   userName = 'You',
   botName = 'StudyBuddy',
 }) => {
+  const isUser = role === 'user';
+
   const formatTimestamp = (date: Date) => {
     return date.toLocaleTimeString([], {
       hour: '2-digit',

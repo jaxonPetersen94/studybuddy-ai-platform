@@ -419,7 +419,7 @@ export const useChatStore = create<ChatStore>()(
           const userMessage: ChatMessage = {
             id: `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
             content: data.content,
-            isUser: true,
+            role: 'user',
             timestamp: new Date(),
             attachments: data.attachments,
           };
@@ -485,7 +485,7 @@ export const useChatStore = create<ChatStore>()(
               .toString(36)
               .substr(2, 9)}`,
             content: data.content,
-            isUser: true,
+            role: 'user',
             timestamp: new Date(),
             attachments: data.attachments,
           };
@@ -496,7 +496,7 @@ export const useChatStore = create<ChatStore>()(
               .toString(36)
               .substr(2, 9)}`,
             content: '',
-            isUser: false,
+            role: 'assistant',
             timestamp: new Date(),
             isTyping: true,
           };

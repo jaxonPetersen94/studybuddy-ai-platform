@@ -179,62 +179,72 @@ const ChatSession: React.FC = () => {
         </div>
       </div>
 
-      {/* Chat Messages */}
-      <div className="flex-1 w-full max-w-4xl mx-auto px-6 overflow-y-auto">
-        <div className="space-y-4 py-6">
-          {currentMessages.map((msg) => (
-            <div key={msg.id} className="group">
-              <ChatBubble
-                message={msg.content}
-                isUser={msg.isUser}
-                timestamp={msg.timestamp}
-                isTyping={msg.isTyping}
-                onCopy={
-                  !msg.isUser ? () => handleCopyMessage(msg.content) : undefined
-                }
-                onLike={
-                  !msg.isUser ? () => handleLikeMessage(msg.id) : undefined
-                }
-                onDislike={
-                  !msg.isUser ? () => handleDislikeMessage(msg.id) : undefined
-                }
-                onRegenerate={
-                  !msg.isUser
-                    ? () => handleRegenerateMessage(msg.id)
-                    : undefined
-                }
-              />
-            </div>
-          ))}
+      {/* Chat Messages - Centered */}
+      <div className="flex-1 w-full overflow-y-auto flex justify-center">
+        <div className="w-full max-w-4xl px-6">
+          <div className="space-y-4 py-6">
+            {currentMessages.map((msg) => (
+              <div key={msg.id} className="group">
+                <ChatBubble
+                  message={msg.content}
+                  role={msg.role}
+                  timestamp={msg.timestamp}
+                  isTyping={msg.isTyping}
+                  onCopy={
+                    msg.role !== 'user'
+                      ? () => handleCopyMessage(msg.content)
+                      : undefined
+                  }
+                  onLike={
+                    msg.role !== 'user'
+                      ? () => handleLikeMessage(msg.id)
+                      : undefined
+                  }
+                  onDislike={
+                    msg.role !== 'user'
+                      ? () => handleDislikeMessage(msg.id)
+                      : undefined
+                  }
+                  onRegenerate={
+                    msg.role !== 'user'
+                      ? () => handleRegenerateMessage(msg.id)
+                      : undefined
+                  }
+                />
+              </div>
+            ))}
 
-          {/* Typing indicator */}
-          {isTyping && (
-            <div className="group">
-              <ChatBubble
-                message=""
-                isUser={false}
-                timestamp={new Date()}
-                isTyping={true}
-              />
-            </div>
-          )}
+            {/* Typing indicator */}
+            {isTyping && (
+              <div className="group">
+                <ChatBubble
+                  message=""
+                  role="assistant"
+                  timestamp={new Date()}
+                  isTyping={true}
+                />
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Chat Input */}
-      <div className="w-full max-w-4xl mx-auto px-6 pb-6">
-        <ChatInput
-          value={userText}
-          onChange={setUserText}
-          onSend={handleSendMessage}
-          placeholder={
-            currentSession?.subject
-              ? `Continue your ${currentSession.subject} conversation...`
-              : 'Type your message...'
-          }
-          isTyping={isTyping || isSending}
-          disabled={isSending}
-        />
+      {/* Chat Input - Centered */}
+      <div className="w-full flex justify-center">
+        <div className="w-full max-w-4xl px-6 pb-6">
+          <ChatInput
+            value={userText}
+            onChange={setUserText}
+            onSend={handleSendMessage}
+            placeholder={
+              currentSession?.subject
+                ? `Continue your ${currentSession.subject} conversation...`
+                : 'Type your message...'
+            }
+            isTyping={isTyping || isSending}
+            disabled={isSending}
+          />
+        </div>
       </div>
     </div>
   );

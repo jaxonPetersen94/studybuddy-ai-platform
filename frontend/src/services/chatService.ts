@@ -223,7 +223,7 @@ export const chatService = {
       return {
         id: response.data.id,
         content: response.data.content,
-        isUser: true,
+        role: 'user',
         timestamp: new Date(response.timestamp),
         attachments: data.attachments,
         metadata: response.data.metadata,
