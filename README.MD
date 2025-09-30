@@ -10,6 +10,9 @@ _Clean and intuitive authentication interface with login and registration functi
 ![StudyBuddy AI Landing Page](screenshots/new-chat.png)
 _Main landing page featuring subject selection cards and quick action prompts for starting learning sessions_
 
+![StudyBuddy AI Chat Session](screenshots/chat-session.png)
+_Active chat session showing AI-powered responses with conversation history in the sidebar_
+
 ## 🏗️ Architecture
 
 ```
@@ -329,9 +332,10 @@ poetry run pytest
 
 ### Phase 2: AI Integration 🚧
 
-- [ ] OpenAI API integration for chat responses
+- [x] OpenAI API integration for chat responses
+- [x] Real-time streaming AI responses
+- [x] Frontend-backend WebSocket/streaming communication
 - [ ] Google Gemini API integration
-- [ ] Real-time AI processing for study materials
 - [ ] Context-aware responses based on selected subjects
 - [ ] File upload processing for documents and images
 - [ ] Voice input transcription and processing
