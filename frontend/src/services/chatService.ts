@@ -34,9 +34,10 @@ export const chatService = {
         id: response.data.id,
         title: response.data.title,
         lastMessage: data.initialMessage || '',
-        timestamp: new Date(response.timestamp),
-        isStarred: false,
-        messageCount: 0,
+        created_at: response.data.created_at,
+        updated_at: response.data.updated_at,
+        isStarred: response.data.is_starred,
+        messageCount: response.data.message_count,
         subject: data.subject,
         quickAction: data.quickAction,
       };
@@ -84,7 +85,7 @@ export const chatService = {
       // Transform timestamps to Date objects
       const sessions = response.data.sessions.map((session) => ({
         ...session,
-        timestamp: new Date(session.timestamp),
+        timestamp: new Date(session.updated_at),
       }));
 
       return {
@@ -108,10 +109,7 @@ export const chatService = {
         token,
       );
 
-      return {
-        ...response.data,
-        timestamp: new Date(response.timestamp),
-      };
+      return response.data;
     } catch (error: any) {
       if (error.status === 404) {
         const apiError: ApiError = {
@@ -143,10 +141,7 @@ export const chatService = {
         token,
       );
 
-      return {
-        ...response.data,
-        timestamp: new Date(response.timestamp),
-      };
+      return response.data;
     } catch (error: any) {
       if (error.status === 404) {
         const apiError: ApiError = {
@@ -205,27 +200,38 @@ export const chatService = {
     token: string,
   ): Promise<ChatMessage> {
     try {
-      const requestData = {
-        ...data,
-        metadata: {
-          ...data.metadata,
-          timestamp: new Date().toISOString(),
-          userAgent: navigator.userAgent,
-        },
-      };
-
       const response = await apiClient.post<SendMessageResponse>(
         API_ENDPOINTS.CHAT.MESSAGES,
-        requestData,
+        data,
         token,
       );
 
       return {
         id: response.data.id,
-        content: response.data.content,
+        sessionId: response.data.sessionId,
+        user_id: response.data.user_id,
         role: 'user',
-        timestamp: new Date(response.timestamp),
+        status: response.data.status,
+        message_type: response.data.message_type,
+        content: response.data.content,
+        created_at: response.data.created_at,
+        updated_at: response.data.updated_at,
+        completed_at: response.data.completed_at,
+        regenerated_at: response.data.regenerated_at,
         attachments: data.attachments,
+        function_calls: response.data.function_calls,
+        tokens_used: response.data.tokens_used || 0,
+        parent_message_id: response.data.parent_message_id,
+        thread_id: response.data.thread_id,
+        feedback_score: response.data.feedback_score,
+        feedback_text: response.data.feedback_text,
+        is_pinned: response.data.is_pinned || false,
+        is_hidden: response.data.is_hidden || false,
+        model_name: response.data.model_name,
+        generation_config: response.data.generation_config,
+        temperature: response.data.temperature,
+        is_flagged: response.data.is_flagged || false,
+        moderation_score: response.data.moderation_score,
         metadata: response.data.metadata,
       };
     } catch (error: any) {
@@ -279,7 +285,7 @@ export const chatService = {
       // Transform timestamps to Date objects
       const messages = response.data.messages.map((message) => ({
         ...message,
-        timestamp: new Date(message.timestamp),
+        timestamp: new Date(message.created_at),
       }));
 
       return {
@@ -316,10 +322,7 @@ export const chatService = {
         token,
       );
 
-      return {
-        ...response.data,
-        timestamp: new Date(response.timestamp),
-      };
+      return response.data;
     } catch (error: any) {
       if (error.status === 404) {
         const apiError: ApiError = {
@@ -393,11 +396,6 @@ export const chatService = {
       const requestData = {
         ...data,
         stream: true,
-        metadata: {
-          ...data.metadata,
-          timestamp: new Date().toISOString(),
-          userAgent: navigator.userAgent,
-        },
       };
 
       const response = await fetch(
@@ -532,15 +530,7 @@ export const chatService = {
         token,
       );
 
-      const sessions = response.data.sessions.map((session) => ({
-        ...session,
-        timestamp: new Date(session.timestamp),
-      }));
-
-      return {
-        ...response.data,
-        sessions,
-      };
+      return response.data;
     } catch (error: any) {
       const apiError: ApiError = {
         code: error.code || 'UNKNOWN_ERROR',
@@ -565,15 +555,7 @@ export const chatService = {
         token,
       );
 
-      const messages = response.data.messages.map((message) => ({
-        ...message,
-        timestamp: new Date(message.timestamp),
-      }));
-
-      return {
-        ...response.data,
-        messages,
-      };
+      return response.data;
     } catch (error: any) {
       const apiError: ApiError = {
         code: error.code || 'UNKNOWN_ERROR',

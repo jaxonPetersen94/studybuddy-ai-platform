@@ -21,6 +21,7 @@ import PillButton from '../../components/ui/PillButton';
 import SubjectCard from '../../components/ui/SubjectCard';
 import { useChatStore } from '../../stores/ChatStore';
 import { QuickAction, Subject } from '../../types/uiTypes';
+import { formatTimestamp } from '../../utils/dateUtils';
 
 const NewChat: React.FC = () => {
   const navigate = useNavigate();
@@ -143,23 +144,6 @@ const NewChat: React.FC = () => {
     },
   ];
 
-  const formatTimestamp = (date: Date | string | number) => {
-    const dateObj = date instanceof Date ? date : new Date(date);
-    if (isNaN(dateObj.getTime())) {
-      return 'Invalid date';
-    }
-
-    const now = new Date();
-    const diffInHours = Math.floor(
-      (now.getTime() - dateObj.getTime()) / (1000 * 60 * 60),
-    );
-
-    if (diffInHours < 1) return 'Just now';
-    if (diffInHours < 24) return `${diffInHours}h ago`;
-    if (diffInHours < 168) return `${Math.floor(diffInHours / 24)}d ago`;
-    return dateObj.toLocaleDateString();
-  };
-
   // Compute the full message by combining action prompt + user text
   const message = selectedAction
     ? selectedAction.prompt + ' ' + userText
@@ -268,7 +252,7 @@ const NewChat: React.FC = () => {
                   {session.lastMessage}
                 </p>
                 <div className="text-xs text-base-content/40">
-                  {formatTimestamp(session.timestamp)}
+                  {formatTimestamp(session.updated_at)}
                 </div>
               </div>
             ))}

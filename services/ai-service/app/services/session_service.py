@@ -1,5 +1,4 @@
 import asyncio
-import uuid
 from datetime import datetime, timezone, timedelta
 from typing import Dict, List, Optional, Any
 from motor.motor_asyncio import AsyncIOMotorDatabase
@@ -7,6 +6,7 @@ from pymongo import ASCENDING, DESCENDING
 from bson import ObjectId
 from app.core.database import get_database
 from app.core.logging import get_logger
+from app.models.session import Session
 
 logger = get_logger(__name__)
 
@@ -37,31 +37,28 @@ class SessionService:
         try:
             db = self._get_db()
             
-            # Create session document
-            session_doc = {
-                "_id": ObjectId(),
-                "user_id": user_id,
-                "title": session_data.get("title", "New Chat"),
-                "model_config": session_data.get("model_config", {}),
-                "metadata": session_data.get("metadata", {}),
-                "is_starred": session_data.get("is_starred", False),
-                "created_at": datetime.now(timezone.utc),
-                "updated_at": datetime.now(timezone.utc),
-                "last_activity": datetime.now(timezone.utc),
-                "message_count": 0
-            }
+            # Create Session model instance
+            session = Session(
+                user_id=user_id,
+                title=session_data.get("title", "New Chat"),
+                generation_config=session_data.get("generation_config", session_data.get("model_config", {})),
+                metadata=session_data.get("metadata", {}),
+                is_pinned=session_data.get("is_pinned", session_data.get("is_starred", False)),
+                is_archived=session_data.get("is_archived", False),
+                tags=session_data.get("tags", []),
+                status=session_data.get("status", "active")
+            )
+            
+            # Convert to dict for MongoDB insertion
+            session_dict = session.model_dump(by_alias=True, exclude_none=True)
             
             # Insert session
-            result = await db.sessions.insert_one(session_doc)
+            result = await db.sessions.insert_one(session_dict)
+            session.id = result.inserted_id
             
-            # Convert ObjectIds to strings for response
-            session_doc["id"] = str(session_doc["_id"])
-            session_doc["user_id"] = str(session_doc["user_id"])
-            del session_doc["_id"]
+            logger.info(f"Created session {session.id} for user {user_id}")
             
-            logger.info(f"Created session {session_doc['id']} for user {user_id}")
-            
-            return session_doc
+            return session.to_dict()
             
         except Exception as e:
             logger.error(f"Error creating session for user {user_id}: {str(e)}")
@@ -82,26 +79,24 @@ class SessionService:
             db = self._get_db()
             
             # Find session with user ownership check
-            session = await db.sessions.find_one({
+            session_doc = await db.sessions.find_one({
                 "_id": ObjectId(session_id),
                 "user_id": user_id
             })
             
-            if not session:
+            if not session_doc:
                 return None
             
-            # Get message count
+            # Get message count from database
             message_count = await db.messages.count_documents({
                 "session_id": ObjectId(session_id)
             })
             
-            # Convert ObjectIds to strings
-            session["id"] = str(session["_id"])
-            session["user_id"] = str(session["user_id"])
-            session["message_count"] = message_count
-            del session["_id"]
+            # Create Session model instance
+            session_doc["message_count"] = message_count
+            session = Session(**session_doc)
             
-            return session
+            return session.to_dict()
             
         except Exception as e:
             logger.error(f"Error getting session {session_id} for user {user_id}: {str(e)}")
@@ -113,7 +108,10 @@ class SessionService:
         limit: int = 50, 
         offset: int = 0,
         search: Optional[str] = None,
-        starred: Optional[bool] = None
+        starred: Optional[bool] = None,
+        pinned: Optional[bool] = None,
+        archived: Optional[bool] = None,
+        tags: Optional[List[str]] = None
     ) -> Dict[str, Any]:
         """
         Get all sessions for a user with optional filtering
@@ -123,7 +121,10 @@ class SessionService:
             limit: Maximum number of sessions to return
             offset: Number of sessions to skip
             search: Optional search query for session titles
-            starred: Optional filter for starred sessions
+            starred: Optional filter for starred sessions (legacy, maps to pinned)
+            pinned: Optional filter for pinned sessions
+            archived: Optional filter for archived sessions
+            tags: Optional filter for sessions with specific tags
             
         Returns:
             Dictionary containing sessions and pagination info
@@ -137,8 +138,18 @@ class SessionService:
             if search:
                 query_filter["title"] = {"$regex": search, "$options": "i"}
             
-            if starred is not None:
-                query_filter["is_starred"] = starred
+            # Support both starred (legacy) and pinned
+            if starred is not None or pinned is not None:
+                query_filter["is_pinned"] = pinned if pinned is not None else starred
+            
+            if archived is not None:
+                query_filter["is_archived"] = archived
+            else:
+                # By default, exclude archived sessions
+                query_filter["is_archived"] = False
+            
+            if tags:
+                query_filter["tags"] = {"$in": tags}
             
             # Get sessions with pagination using aggregation to include message count
             pipeline = [
@@ -159,13 +170,17 @@ class SessionService:
             ]
             
             cursor = db.sessions.aggregate(pipeline)
-            sessions = await cursor.to_list(length=limit)
+            session_docs = await cursor.to_list(length=limit)
             
-            # Convert ObjectIds to strings
-            for session in sessions:
-                session["id"] = str(session["_id"])
-                session["user_id"] = str(session["user_id"])
-                del session["_id"]
+            # Convert to Session models
+            sessions = []
+            for doc in session_docs:
+                try:
+                    session = Session(**doc)
+                    sessions.append(session.to_dict())
+                except Exception as e:
+                    logger.error(f"Error converting session document: {str(e)}")
+                    continue
             
             # Get total count for pagination
             total_count = await db.sessions.count_documents(query_filter)
@@ -205,26 +220,28 @@ class SessionService:
             db = self._get_db()
             
             # Check if session exists and belongs to user
-            existing_session = await self.get_session(session_id, user_id)
-            if not existing_session:
+            session_doc = await db.sessions.find_one({
+                "_id": ObjectId(session_id),
+                "user_id": user_id
+            })
+            
+            if not session_doc:
                 return None
             
-            # Build update document
-            update_doc = {}
-            allowed_fields = [
-                "title", "model_config", "metadata", "is_starred", 
-                "last_activity", "message_count"
-            ]
+            # Create Session model instance
+            session = Session(**session_doc)
             
-            for field in allowed_fields:
-                if field in update_data:
-                    update_doc[field] = update_data[field]
+            # Map legacy field names
+            if "is_starred" in update_data:
+                update_data["is_pinned"] = update_data.pop("is_starred")
+            if "model_config" in update_data:
+                update_data["generation_config"] = update_data.pop("model_config")
             
-            if not update_doc:
-                return existing_session
+            # Update the session model
+            session.update_from_dict(update_data)
             
-            # Always update the updated_at timestamp
-            update_doc["updated_at"] = datetime.now(timezone.utc)
+            # Convert to dict for MongoDB update
+            update_doc = session.model_dump(by_alias=True, exclude={"id"}, exclude_none=True)
             
             # Execute update
             result = await db.sessions.update_one(
@@ -239,19 +256,20 @@ class SessionService:
                 # Return updated session
                 return await self.get_session(session_id, user_id)
             
-            return existing_session
+            return session.to_dict()
             
         except Exception as e:
             logger.error(f"Error updating session {session_id} for user {user_id}: {str(e)}")
             raise
     
-    async def delete_session(self, session_id: str, user_id: str) -> bool:
+    async def delete_session(self, session_id: str, user_id: str, soft: bool = True) -> bool:
         """
         Delete a session and all its messages
         
         Args:
             session_id: ID of the session to delete
             user_id: ID of the user deleting the session
+            soft: If True, perform soft delete (default), else hard delete
             
         Returns:
             True if deleted successfully, False if not found
@@ -260,27 +278,129 @@ class SessionService:
             db = self._get_db()
             
             # Check if session exists and belongs to user
-            existing_session = await self.get_session(session_id, user_id)
-            if not existing_session:
-                return False
-            
-            # Delete associated messages first
-            await db.messages.delete_many({"session_id": ObjectId(session_id)})
-            
-            # Delete the session
-            result = await db.sessions.delete_one({
+            session_doc = await db.sessions.find_one({
                 "_id": ObjectId(session_id),
                 "user_id": user_id
             })
             
-            if result.deleted_count > 0:
-                logger.info(f"Deleted session {session_id} for user {user_id}")
-                return True
+            if not session_doc:
+                return False
+            
+            if soft:
+                # Soft delete - update status
+                session = Session(**session_doc)
+                session.soft_delete()
+                
+                result = await db.sessions.update_one(
+                    {"_id": ObjectId(session_id)},
+                    {"$set": {
+                        "status": session.status,
+                        "updated_at": session.updated_at
+                    }}
+                )
+                
+                if result.modified_count > 0:
+                    logger.info(f"Soft deleted session {session_id} for user {user_id}")
+                    return True
+            else:
+                # Hard delete - remove from database
+                # Delete associated messages first
+                await db.messages.delete_many({"session_id": ObjectId(session_id)})
+                
+                # Delete the session
+                result = await db.sessions.delete_one({
+                    "_id": ObjectId(session_id),
+                    "user_id": user_id
+                })
+                
+                if result.deleted_count > 0:
+                    logger.info(f"Hard deleted session {session_id} for user {user_id}")
+                    return True
             
             return False
             
         except Exception as e:
             logger.error(f"Error deleting session {session_id} for user {user_id}: {str(e)}")
+            raise
+    
+    async def archive_session(self, session_id: str, user_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Archive a session
+        
+        Args:
+            session_id: ID of the session to archive
+            user_id: ID of the user
+            
+        Returns:
+            Updated session data or None if not found
+        """
+        try:
+            db = self._get_db()
+            
+            session_doc = await db.sessions.find_one({
+                "_id": ObjectId(session_id),
+                "user_id": user_id
+            })
+            
+            if not session_doc:
+                return None
+            
+            session = Session(**session_doc)
+            session.archive()
+            
+            await db.sessions.update_one(
+                {"_id": ObjectId(session_id)},
+                {"$set": {
+                    "is_archived": session.is_archived,
+                    "status": session.status,
+                    "updated_at": session.updated_at
+                }}
+            )
+            
+            return session.to_dict()
+            
+        except Exception as e:
+            logger.error(f"Error archiving session {session_id}: {str(e)}")
+            raise
+    
+    async def restore_session(self, session_id: str, user_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Restore an archived session
+        
+        Args:
+            session_id: ID of the session to restore
+            user_id: ID of the user
+            
+        Returns:
+            Updated session data or None if not found
+        """
+        try:
+            db = self._get_db()
+            
+            session_doc = await db.sessions.find_one({
+                "_id": ObjectId(session_id),
+                "user_id": user_id
+            })
+            
+            if not session_doc:
+                return None
+            
+            session = Session(**session_doc)
+            session.restore()
+            
+            await db.sessions.update_one(
+                {"_id": ObjectId(session_id)},
+                {"$set": {
+                    "is_archived": session.is_archived,
+                    "status": session.status,
+                    "updated_at": session.updated_at
+                }}
+            )
+            
+            return session.to_dict()
+            
+        except Exception as e:
+            logger.error(f"Error restoring session {session_id}: {str(e)}")
             raise
     
     async def search_sessions(
@@ -368,13 +488,17 @@ class SessionService:
             ]
             
             cursor = db.sessions.aggregate(pipeline)
-            sessions = await cursor.to_list(length=limit)
+            session_docs = await cursor.to_list(length=limit)
             
-            # Convert ObjectIds to strings
-            for session in sessions:
-                session["id"] = str(session["_id"])
-                session["user_id"] = str(session["user_id"])
-                del session["_id"]
+            # Convert to Session models
+            sessions = []
+            for doc in session_docs:
+                try:
+                    session = Session(**doc)
+                    sessions.append(session.to_dict())
+                except Exception as e:
+                    logger.error(f"Error converting session document: {str(e)}")
+                    continue
             
             # Get total count for search results
             count_pipeline = [
@@ -415,7 +539,7 @@ class SessionService:
     
     async def star_session(self, session_id: str, user_id: str) -> Optional[Dict[str, Any]]:
         """
-        Star/favorite a session
+        Star/pin a session (legacy method, maps to pin_session)
         
         Args:
             session_id: ID of the session to star
@@ -424,11 +548,11 @@ class SessionService:
         Returns:
             Updated session data or None if not found
         """
-        return await self.update_session(session_id, user_id, {"is_starred": True})
+        return await self.update_session(session_id, user_id, {"is_pinned": True})
     
     async def unstar_session(self, session_id: str, user_id: str) -> Optional[Dict[str, Any]]:
         """
-        Unstar/unfavorite a session
+        Unstar/unpin a session (legacy method, maps to unpin_session)
         
         Args:
             session_id: ID of the session to unstar
@@ -437,15 +561,42 @@ class SessionService:
         Returns:
             Updated session data or None if not found
         """
-        return await self.update_session(session_id, user_id, {"is_starred": False})
+        return await self.update_session(session_id, user_id, {"is_pinned": False})
     
-    async def bulk_delete_sessions(self, session_ids: List[str], user_id: str) -> Dict[str, Any]:
+    async def pin_session(self, session_id: str, user_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Pin a session
+        
+        Args:
+            session_id: ID of the session to pin
+            user_id: ID of the user
+            
+        Returns:
+            Updated session data or None if not found
+        """
+        return await self.update_session(session_id, user_id, {"is_pinned": True})
+    
+    async def unpin_session(self, session_id: str, user_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Unpin a session
+        
+        Args:
+            session_id: ID of the session to unpin
+            user_id: ID of the user
+            
+        Returns:
+            Updated session data or None if not found
+        """
+        return await self.update_session(session_id, user_id, {"is_pinned": False})
+    
+    async def bulk_delete_sessions(self, session_ids: List[str], user_id: str, soft: bool = True) -> Dict[str, Any]:
         """
         Delete multiple sessions in bulk
         
         Args:
             session_ids: List of session IDs to delete
             user_id: ID of the user
+            soft: If True, perform soft delete (default), else hard delete
             
         Returns:
             Dictionary containing deletion results
@@ -456,7 +607,7 @@ class SessionService:
             
             for session_id in session_ids:
                 try:
-                    success = await self.delete_session(session_id, user_id)
+                    success = await self.delete_session(session_id, user_id, soft=soft)
                     if success:
                         deleted_count += 1
                     else:
@@ -500,7 +651,8 @@ class SessionService:
                 {"$group": {
                     "_id": None,
                     "total_sessions": {"$sum": 1},
-                    "starred_sessions": {"$sum": {"$cond": [{"$eq": ["$is_starred", True]}, 1, 0]}},
+                    "pinned_sessions": {"$sum": {"$cond": [{"$eq": ["$is_pinned", True]}, 1, 0]}},
+                    "archived_sessions": {"$sum": {"$cond": [{"$eq": ["$is_archived", True]}, 1, 0]}},
                     "avg_messages_per_session": {"$avg": {"$size": "$messages"}},
                     "last_activity": {"$max": "$last_activity"},
                     "first_session_created": {"$min": "$created_at"}
@@ -573,15 +725,18 @@ class SessionService:
         """
         try:
             # Get original session
-            original_session = await self.get_session(session_id, user_id)
-            if not original_session:
+            original_session_dict = await self.get_session(session_id, user_id)
+            if not original_session_dict:
                 return None
             
-            # Create new session
+            # Create new session data
             new_session_data = {
-                "title": new_title or f"{original_session['title']} (Copy)",
-                "model_config": original_session.get("model_config", {}),
-                "metadata": original_session.get("metadata", {})
+                "title": new_title or f"{original_session_dict['title']} (Copy)",
+                "generation_config": original_session_dict.get("generation_config", {}),
+                "metadata": original_session_dict.get("metadata", {}),
+                "tags": original_session_dict.get("tags", []),
+                "is_pinned": False,
+                "is_archived": False
             }
             
             new_session = await self.create_session(user_id, new_session_data)
@@ -593,4 +748,83 @@ class SessionService:
             
         except Exception as e:
             logger.error(f"Error duplicating session {session_id} for user {user_id}: {str(e)}")
+            raise
+    
+    async def update_activity(self, session_id: str, user_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Update session activity timestamp
+        
+        Args:
+            session_id: ID of the session
+            user_id: ID of the user
+            
+        Returns:
+            Updated session data or None if not found
+        """
+        try:
+            db = self._get_db()
+            
+            session_doc = await db.sessions.find_one({
+                "_id": ObjectId(session_id),
+                "user_id": user_id
+            })
+            
+            if not session_doc:
+                return None
+            
+            session = Session(**session_doc)
+            session.update_activity()
+            
+            await db.sessions.update_one(
+                {"_id": ObjectId(session_id)},
+                {"$set": {
+                    "last_activity": session.last_activity,
+                    "updated_at": session.updated_at
+                }}
+            )
+            
+            return session.to_dict()
+            
+        except Exception as e:
+            logger.error(f"Error updating activity for session {session_id}: {str(e)}")
+            raise
+    
+    async def increment_message_count(self, session_id: str, user_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Increment session message count and update activity
+        
+        Args:
+            session_id: ID of the session
+            user_id: ID of the user
+            
+        Returns:
+            Updated session data or None if not found
+        """
+        try:
+            db = self._get_db()
+            
+            session_doc = await db.sessions.find_one({
+                "_id": ObjectId(session_id),
+                "user_id": user_id
+            })
+            
+            if not session_doc:
+                return None
+            
+            session = Session(**session_doc)
+            session.increment_message_count()
+            
+            await db.sessions.update_one(
+                {"_id": ObjectId(session_id)},
+                {"$set": {
+                    "message_count": session.message_count,
+                    "last_activity": session.last_activity,
+                    "updated_at": session.updated_at
+                }}
+            )
+            
+            return session.to_dict()
+            
+        except Exception as e:
+            logger.error(f"Error incrementing message count for session {session_id}: {str(e)}")
             raise

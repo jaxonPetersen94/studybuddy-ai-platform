@@ -1,10 +1,11 @@
 import React from 'react';
 import { User, Bot, Copy, ThumbsUp, ThumbsDown, RotateCcw } from 'lucide-react';
+import { formatTimestamp } from '../../utils/dateUtils';
 
 interface ChatBubbleProps {
   message: string;
   role: 'user' | 'assistant';
-  timestamp?: Date;
+  timestamp?: string;
   isTyping?: boolean;
   onCopy?: () => void;
   onLike?: () => void;
@@ -29,14 +30,6 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({
   botName = 'StudyBuddy',
 }) => {
   const isUser = role === 'user';
-
-  const formatTimestamp = (date: Date) => {
-    return date.toLocaleTimeString([], {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true,
-    });
-  };
 
   const TypingIndicator = () => (
     <div className="flex space-x-1 items-center py-2">

@@ -5,6 +5,7 @@ import ChatBubble from '../../components/chat/ChatBubble';
 import ChatInput from '../../components/chat/ChatInput';
 import SidebarComponent from '../../components/layout/Sidebar';
 import { useChatStore } from '../../stores/ChatStore';
+import { formatTimestamp } from '../../utils/dateUtils';
 
 const ChatSession: React.FC = () => {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -48,23 +49,6 @@ const ChatSession: React.FC = () => {
   useEffect(() => {
     loadSessions();
   }, []);
-
-  const formatTimestamp = (date: Date | string | number) => {
-    const dateObj = date instanceof Date ? date : new Date(date);
-    if (isNaN(dateObj.getTime())) {
-      return 'Invalid date';
-    }
-
-    const now = new Date();
-    const diffInHours = Math.floor(
-      (now.getTime() - dateObj.getTime()) / (1000 * 60 * 60),
-    );
-
-    if (diffInHours < 1) return 'Just now';
-    if (diffInHours < 24) return `${diffInHours}h ago`;
-    if (diffInHours < 168) return `${Math.floor(diffInHours / 24)}d ago`;
-    return dateObj.toLocaleDateString();
-  };
 
   const handleSendMessage = async () => {
     if (!userText.trim() || isSending || !currentSession) return;
@@ -144,7 +128,7 @@ const ChatSession: React.FC = () => {
                   {session.lastMessage}
                 </p>
                 <div className="text-xs text-base-content/40">
-                  {formatTimestamp(session.timestamp)}
+                  {formatTimestamp(session.updated_at)}
                 </div>
               </div>
             ))}
@@ -170,7 +154,7 @@ const ChatSession: React.FC = () => {
                     {currentSession.title}
                   </h1>
                   <p className="text-xs text-base-content/60">
-                    {formatTimestamp(currentSession.timestamp)}
+                    {formatTimestamp(currentSession.created_at)}
                   </p>
                 </div>
               )}
@@ -188,7 +172,7 @@ const ChatSession: React.FC = () => {
                 <ChatBubble
                   message={msg.content}
                   role={msg.role}
-                  timestamp={msg.timestamp}
+                  timestamp={msg.created_at}
                   isTyping={msg.isTyping}
                   onCopy={
                     msg.role !== 'user'
@@ -217,12 +201,7 @@ const ChatSession: React.FC = () => {
             {/* Typing indicator */}
             {isTyping && (
               <div className="group">
-                <ChatBubble
-                  message=""
-                  role="assistant"
-                  timestamp={new Date()}
-                  isTyping={true}
-                />
+                <ChatBubble message="" role="assistant" isTyping={true} />
               </div>
             )}
           </div>

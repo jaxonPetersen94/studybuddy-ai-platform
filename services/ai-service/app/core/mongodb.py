@@ -16,11 +16,10 @@ class PyObjectId(ObjectId):
         handler: Any,
     ) -> core_schema.CoreSchema:
         """Define the core schema for PyObjectId"""
-        return core_schema.with_info_wrap_validator_function(
-            cls.validate,
-            core_schema.str_schema(),
-            serialization=core_schema.to_string_ser_schema(),
-        )
+        return core_schema.union_schema([
+            core_schema.is_instance_schema(ObjectId),
+            core_schema.no_info_plain_validator_function(cls.validate),
+        ], serialization=core_schema.to_string_ser_schema())
 
     @classmethod
     def __get_pydantic_json_schema__(
@@ -32,7 +31,7 @@ class PyObjectId(ObjectId):
         return json_schema
 
     @classmethod
-    def validate(cls, v, info=None):
+    def validate(cls, v):
         """Validate ObjectId input"""
         if isinstance(v, ObjectId):
             return v

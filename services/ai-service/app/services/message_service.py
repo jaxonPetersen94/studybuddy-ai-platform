@@ -1,12 +1,14 @@
 import asyncio
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Dict, List, Optional, Any
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo import ASCENDING, DESCENDING
 from bson import ObjectId
 from app.core.database import get_database
 from app.core.logging import get_logger
+from app.models.message import Message
+from app.models.session import Session
 
 logger = get_logger(__name__)
 
@@ -40,46 +42,44 @@ class MessageService:
             # Validate session exists and belongs to user
             session_id = message_data.get("session_id")
             if session_id:
-                session = await db.sessions.find_one({
+                session_doc = await db.sessions.find_one({
                     "_id": ObjectId(session_id),
                     "user_id": user_id
                 })
-                if not session:
+                if not session_doc:
                     raise ValueError("Session not found or access denied")
+                
+                # Load session model to validate it's active
+                session = Session(**session_doc)
+                if not session.is_active:
+                    raise ValueError("Cannot add messages to inactive session")
+                
+                # Keep session_id as string for Message model
+                # message_data["session_id"] is already a string, don't convert it
             
-            # Create message document
-            message_doc = {
-                "_id": ObjectId(),
-                "session_id": ObjectId(session_id) if session_id else None,
-                "user_id": user_id,
-                "role": message_data.get("role", "user"),
-                "content": message_data.get("content", ""),
-                "attachments": message_data.get("attachments", []),
-                "metadata": message_data.get("metadata", {}),
-                "status": message_data.get("status", "completed"),
-                "created_at": datetime.now(timezone.utc),
-                "updated_at": datetime.now(timezone.utc),
-                "completed_at": message_data.get("completed_at"),
-                "regenerated_at": message_data.get("regenerated_at")
-            }
+            # Create Message instance (validates automatically)
+            message = Message(
+                user_id=user_id,
+                **message_data
+            )
+            
+            # Convert to dict for MongoDB insertion
+            message_dict = message.model_dump(by_alias=True, exclude_none=True)
+            
+            # Convert session_id to ObjectId for MongoDB storage
+            if "session_id" in message_dict and message_dict["session_id"]:
+                message_dict["session_id"] = ObjectId(message_dict["session_id"])
             
             # Insert message
-            result = await db.messages.insert_one(message_doc)
+            await db.messages.insert_one(message_dict)
             
             # Update session message count and last activity if session exists
             if session_id:
                 await self._update_session_stats(session_id)
             
-            # Convert ObjectIds to strings for response
-            message_doc["id"] = str(message_doc["_id"])
-            message_doc["user_id"] = str(message_doc["user_id"])
-            if message_doc["session_id"]:
-                message_doc["session_id"] = str(message_doc["session_id"])
-            del message_doc["_id"]
+            logger.info(f"Created message {message.id} for user {user_id}")
             
-            logger.info(f"Created message {message_doc['id']} for user {user_id}")
-            
-            return message_doc
+            return message.to_dict()
             
         except Exception as e:
             logger.error(f"Error creating message for user {user_id}: {str(e)}")
@@ -100,7 +100,7 @@ class MessageService:
             db = self._get_db()
             
             # Find message with user access check
-            message = await db.messages.find_one({
+            message_doc = await db.messages.find_one({
                 "_id": ObjectId(message_id),
                 "$or": [
                     {"user_id": user_id},
@@ -108,17 +108,12 @@ class MessageService:
                 ]
             })
             
-            if not message:
+            if not message_doc:
                 return None
             
-            # Convert ObjectIds to strings
-            message["id"] = str(message["_id"])
-            message["user_id"] = str(message["user_id"])
-            if message.get("session_id"):
-                message["session_id"] = str(message["session_id"])
-            del message["_id"]
-            
-            return message
+            # Convert to Message model
+            message = Message.create_from_dict(message_doc)
+            return message.to_dict()
             
         except Exception as e:
             logger.error(f"Error getting message {message_id} for user {user_id}: {str(e)}")
@@ -165,15 +160,10 @@ class MessageService:
             
             # Get messages with pagination
             cursor = db.messages.find(query_filter).sort("created_at", DESCENDING).skip(offset).limit(limit)
-            messages = await cursor.to_list(length=limit)
+            message_docs = await cursor.to_list(length=limit)
             
-            # Convert ObjectIds to strings
-            for message in messages:
-                message["id"] = str(message["_id"])
-                message["user_id"] = str(message["user_id"])
-                if message.get("session_id"):
-                    message["session_id"] = str(message["session_id"])
-                del message["_id"]
+            # Convert to Message models
+            messages = [Message.create_from_dict(doc).to_dict() for doc in message_docs]
             
             # Get total count
             total_count = await db.messages.count_documents(query_filter)
@@ -199,45 +189,31 @@ class MessageService:
         limit: int = 50, 
         offset: int = 0
     ) -> Dict[str, Any]:
-        """
-        Get all messages for a specific session
-        
-        Args:
-            session_id: ID of the session
-            user_id: ID of the user requesting the messages
-            limit: Maximum number of messages to return
-            offset: Number of messages to skip
-            
-        Returns:
-            Dictionary containing messages and pagination info
-        """
         try:
             db = self._get_db()
             
-            # Verify session ownership
-            session = await db.sessions.find_one({
+            # Verify session ownership - session _id IS an ObjectId
+            session_doc = await db.sessions.find_one({
                 "_id": ObjectId(session_id),
                 "user_id": user_id
             })
-            if not session:
+            if not session_doc:
                 raise ValueError("Session not found or access denied")
             
-            # Get messages for the session
+            # Get messages for the session - session_id is stored as ObjectId in MongoDB
             cursor = db.messages.find({
                 "session_id": ObjectId(session_id)
             }).sort("created_at", ASCENDING).skip(offset).limit(limit)
             
-            messages = await cursor.to_list(length=limit)
+            message_docs = await cursor.to_list(length=limit)
             
-            # Convert ObjectIds to strings
-            for message in messages:
-                message["id"] = str(message["_id"])
-                message["user_id"] = str(message["user_id"])
-                message["session_id"] = str(message["session_id"])
-                del message["_id"]
+            # Convert to Message models
+            messages = [Message.create_from_dict(doc).to_dict() for doc in message_docs]
             
-            # Get total count
-            total_count = await db.messages.count_documents({"session_id": ObjectId(session_id)})
+            # Get total count - also need ObjectId here
+            total_count = await db.messages.count_documents({
+                "session_id": ObjectId(session_id)  # ← FIX: Convert to ObjectId
+            })
             
             return {
                 "messages": messages,
@@ -275,26 +251,25 @@ class MessageService:
             db = self._get_db()
             
             # Check if message exists and user has access
-            existing_message = await self.get_message(message_id, user_id)
-            if not existing_message:
+            message_doc = await db.messages.find_one({
+                "_id": ObjectId(message_id),
+                "$or": [
+                    {"user_id": user_id},
+                    {"session_id": {"$in": await self._get_user_session_ids(user_id)}}
+                ]
+            })
+            
+            if not message_doc:
                 return None
             
-            # Build update document
-            update_doc = {}
-            allowed_fields = [
-                "content", "attachments", "metadata", "status", 
-                "completed_at", "regenerated_at"
-            ]
+            # Create Message instance
+            message = Message.create_from_dict(message_doc)
             
-            for field in allowed_fields:
-                if field in update_data:
-                    update_doc[field] = update_data[field]
+            # Update fields using the model method
+            message.update_from_dict(update_data)
             
-            if not update_doc:
-                return existing_message
-            
-            # Always update the updated_at timestamp
-            update_doc["updated_at"] = datetime.now(timezone.utc)
+            # Convert to dict for database update
+            update_doc = message.model_dump(by_alias=True, exclude_none=True, exclude={"id"})
             
             # Execute update
             result = await db.messages.update_one(
@@ -303,10 +278,9 @@ class MessageService:
             )
             
             if result.modified_count > 0:
-                # Return updated message
-                return await self.get_message(message_id, user_id)
+                return message.to_dict()
             
-            return existing_message
+            return message.to_dict()
             
         except Exception as e:
             logger.error(f"Error updating message {message_id} for user {user_id}: {str(e)}")
@@ -371,6 +345,7 @@ class MessageService:
             # Update message status to indicate regeneration is requested
             update_data = {
                 "status": "regenerating",
+                "regenerated_at": datetime.now(timezone.utc),
                 "metadata": {
                     **regenerate_data.get("metadata", {}),
                     "regeneration_requested_at": datetime.now(timezone.utc).isoformat(),
@@ -422,7 +397,7 @@ class MessageService:
             }
             
             # Store feedback
-            result = await db.message_feedback.insert_one(feedback_doc)
+            await db.message_feedback.insert_one(feedback_doc)
             
             # Convert ObjectIds to strings for response
             feedback_doc["id"] = str(feedback_doc["_id"])
@@ -463,11 +438,11 @@ class MessageService:
             db = self._get_db()
             
             # Verify session ownership
-            session = await db.sessions.find_one({
+            session_doc = await db.sessions.find_one({
                 "_id": ObjectId(session_id),
                 "user_id": user_id
             })
-            if not session:
+            if not session_doc:
                 raise ValueError("Session not found or access denied")
             
             # Search messages in session using text search
@@ -484,28 +459,28 @@ class MessageService:
             
             # Get exact matches first
             exact_cursor = db.messages.find(exact_match_filter).sort("created_at", DESCENDING)
-            exact_messages = await exact_cursor.to_list(length=limit)
+            exact_message_docs = await exact_cursor.to_list(length=limit)
             
             # If we don't have enough exact matches, get partial matches
-            if len(exact_messages) < limit:
-                remaining_limit = limit - len(exact_messages)
+            if len(exact_message_docs) < limit:
+                remaining_limit = limit - len(exact_message_docs)
                 partial_cursor = db.messages.find({
                     **search_filter,
-                    "_id": {"$nin": [msg["_id"] for msg in exact_messages]}
+                    "_id": {"$nin": [msg["_id"] for msg in exact_message_docs]}
                 }).sort("created_at", DESCENDING).skip(offset).limit(remaining_limit)
                 
-                partial_messages = await partial_cursor.to_list(length=remaining_limit)
-                messages = exact_messages + partial_messages
+                partial_message_docs = await partial_cursor.to_list(length=remaining_limit)
+                message_docs = exact_message_docs + partial_message_docs
             else:
-                messages = exact_messages[:limit]
+                message_docs = exact_message_docs[:limit]
             
-            # Convert ObjectIds to strings and add relevance score
-            for i, message in enumerate(messages):
-                message["id"] = str(message["_id"])
-                message["user_id"] = str(message["user_id"])
-                message["session_id"] = str(message["session_id"])
-                message["relevance_score"] = 1 if i < len(exact_messages) else 2
-                del message["_id"]
+            # Convert to Message models and add relevance score
+            messages = []
+            for i, doc in enumerate(message_docs):
+                message = Message.create_from_dict(doc)
+                message_dict = message.to_dict()
+                message_dict["relevance_score"] = 1 if i < len(exact_message_docs) else 2
+                messages.append(message_dict)
             
             # Get total count
             total_count = await db.messages.count_documents(search_filter)
@@ -611,14 +586,18 @@ class MessageService:
             if not session_id:
                 return {"messages": [target_message], "target_message_id": message_id}
             
+            # Convert created_at string back to datetime for comparison
+            if isinstance(target_created_at, str):
+                target_created_at = datetime.fromisoformat(target_created_at.replace('Z', '+00:00'))
+            
             # Get messages before the target message
             before_cursor = db.messages.find({
                 "session_id": ObjectId(session_id),
                 "created_at": {"$lt": target_created_at}
             }).sort("created_at", DESCENDING).limit(context_size)
             
-            before_messages = await before_cursor.to_list(length=context_size)
-            before_messages.reverse()  # Reverse to get chronological order
+            before_message_docs = await before_cursor.to_list(length=context_size)
+            before_message_docs.reverse()  # Reverse to get chronological order
             
             # Get messages after the target message
             after_cursor = db.messages.find({
@@ -626,15 +605,11 @@ class MessageService:
                 "created_at": {"$gt": target_created_at}
             }).sort("created_at", ASCENDING).limit(context_size)
             
-            after_messages = await after_cursor.to_list(length=context_size)
+            after_message_docs = await after_cursor.to_list(length=context_size)
             
-            # Convert ObjectIds to strings for all messages
-            all_messages = before_messages + after_messages
-            for message in all_messages:
-                message["id"] = str(message["_id"])
-                message["user_id"] = str(message["user_id"])
-                message["session_id"] = str(message["session_id"])
-                del message["_id"]
+            # Convert to Message models
+            before_messages = [Message.create_from_dict(doc).to_dict() for doc in before_message_docs]
+            after_messages = [Message.create_from_dict(doc).to_dict() for doc in after_message_docs]
             
             # Combine all messages
             thread_messages = before_messages + [target_message] + after_messages
@@ -692,7 +667,6 @@ class MessageService:
             stats = result[0] if result else {}
             
             # Get recent activity (messages in last 7 days)
-            from datetime import timedelta
             seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
             
             recent_count = await db.messages.count_documents({
@@ -731,12 +705,22 @@ class MessageService:
     async def _update_session_stats(self, session_id: str):
         """
         Update session statistics (message count, last activity)
+        Uses the Session model's methods for consistency
         
         Args:
             session_id: ID of the session to update
         """
         try:
             db = self._get_db()
+            
+            # Get current session
+            session_doc = await db.sessions.find_one({"_id": ObjectId(session_id)})
+            if not session_doc:
+                logger.warning(f"Session {session_id} not found for stats update")
+                return
+            
+            # Load Session model
+            session = Session(**session_doc)
             
             # Get message count and last message time using aggregation
             pipeline = [
@@ -753,18 +737,21 @@ class MessageService:
             
             if result:
                 stats = result[0]
-                # Update session with new stats
-                update_doc = {
-                    "message_count": stats["message_count"],
-                    "updated_at": datetime.now(timezone.utc)
-                }
                 
+                # Update session using model methods for consistency
+                session.message_count = stats["message_count"]
                 if stats["last_message_at"]:
-                    update_doc["last_activity"] = stats["last_message_at"]
+                    session.last_activity = stats["last_message_at"]
+                session.updated_at = datetime.now(timezone.utc)
                 
+                # Save to database
                 await db.sessions.update_one(
                     {"_id": ObjectId(session_id)},
-                    {"$set": update_doc}
+                    {"$set": {
+                        "message_count": session.message_count,
+                        "last_activity": session.last_activity,
+                        "updated_at": session.updated_at
+                    }}
                 )
             
         except Exception as e:

@@ -1,6 +1,6 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Dict, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.core.mongodb import PyObjectId, MongoBaseConfig
 
@@ -19,7 +19,7 @@ class Session(BaseModel):
     status: str = Field(default="active", description="Session status: 'active', 'archived', 'deleted'")
     
     # Timestamps
-    created_at: datetime = Field(default_factory=datetime.utcnow, description="Session creation timestamp")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Session creation timestamp")
     updated_at: Optional[datetime] = Field(None, description="Last update timestamp")
     last_activity: Optional[datetime] = Field(None, description="Last activity timestamp")
     
@@ -27,15 +27,28 @@ class Session(BaseModel):
     message_count: int = Field(default=0, description="Total number of messages in session")
     
     # Model and generation configuration
-    generation_config: Dict[str, Any] = Field(default_factory=dict, description="AI model configuration for session")
+    generation_config: Optional[Dict[str, Any]] = Field(default_factory=dict, description="AI model configuration for session")
     
     # Session organization
     is_pinned: bool = Field(default=False, description="User can pin important sessions")
     is_archived: bool = Field(default=False, description="Archive old sessions")
-    tags: list[str] = Field(default_factory=list, description="User-defined tags for organization")
+    tags: Optional[list[str]] = Field(default_factory=list, description="User-defined tags for organization")
     
     # Additional data
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="Extra session data")
+    metadata: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Extra session data")
+    
+    # Validators to convert None to default values
+    @field_validator('metadata', 'generation_config', mode='before')
+    @classmethod
+    def ensure_dict_not_none(cls, v):
+        """Convert None to empty dict"""
+        return v if v is not None else {}
+    
+    @field_validator('tags', mode='before')
+    @classmethod
+    def ensure_list_not_none(cls, v):
+        """Convert None to empty list"""
+        return v if v is not None else []
     
     class Config(MongoBaseConfig):
         json_schema_extra = {
@@ -114,7 +127,7 @@ class Session(BaseModel):
                     setattr(self, field, data[field])
         
         # Auto-update the updated_at timestamp
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(timezone.utc)
     
     @property
     def is_active(self) -> bool:
@@ -132,13 +145,13 @@ class Session(BaseModel):
         if not self.last_activity:
             return False
         
-        time_diff = datetime.utcnow() - self.last_activity
+        time_diff = datetime.now(timezone.utc) - self.last_activity
         return time_diff.total_seconds() < (hours * 3600)
     
     def update_activity(self) -> None:
         """Update last activity timestamp"""
-        self.last_activity = datetime.utcnow()
-        self.updated_at = datetime.utcnow()
+        self.last_activity = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(timezone.utc)
     
     def increment_message_count(self) -> None:
         """Increment message count and update activity"""
@@ -149,15 +162,15 @@ class Session(BaseModel):
         """Archive the session"""
         self.is_archived = True
         self.status = "archived"
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(timezone.utc)
     
     def restore(self) -> None:
         """Restore archived session"""
         self.is_archived = False
         self.status = "active"
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(timezone.utc)
     
     def soft_delete(self) -> None:
         """Soft delete the session"""
         self.status = "deleted"
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(timezone.utc)

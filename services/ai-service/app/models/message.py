@@ -1,6 +1,7 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+from bson import ObjectId
 
 from app.core.mongodb import PyObjectId, MongoBaseConfig
 
@@ -21,16 +22,16 @@ class Message(BaseModel):
     status: str = Field(default="completed", description="Message status: 'generating', 'completed', 'error', 'regenerating'")
     message_type: str = Field(default="text", description="Message type: 'text', 'function_call', 'function_result'")
     
-    # Timestamps
-    created_at: datetime = Field(default_factory=datetime.utcnow, description="Message creation timestamp")
+    # Timestamps - using timezone-aware UTC datetimes
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Message creation timestamp")
     updated_at: Optional[datetime] = Field(None, description="Last update timestamp")
     completed_at: Optional[datetime] = Field(None, description="Message completion timestamp")
     regenerated_at: Optional[datetime] = Field(None, description="Last regeneration timestamp")
     
-    # Additional data
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="Extra message data")
-    attachments: List[str] = Field(default_factory=list, description="List of attachment IDs")
-    function_calls: List[Dict[str, Any]] = Field(default_factory=list, description="AI function calls")
+    # Additional data - using Optional with default_factory for None handling
+    metadata: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Extra message data")
+    attachments: Optional[List[str]] = Field(default_factory=list, description="List of attachment IDs")
+    function_calls: Optional[List[Dict[str, Any]]] = Field(default_factory=list, description="AI function calls")
     tokens_used: int = Field(default=0, description="Token count for this message")
     
     # Message relationships and threading
@@ -45,16 +46,37 @@ class Message(BaseModel):
     
     # Model and generation info
     model_name: Optional[str] = Field(None, description="Which AI model generated this")
-    generation_config: Dict[str, Any] = Field(default_factory=dict, description="Model configuration used")  # RENAMED
+    generation_config: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Model configuration used")
     temperature: Optional[str] = Field(None, description="Generation temperature")
     
     # Content moderation
     is_flagged: bool = Field(default=False, description="Content moderation flag")
     moderation_score: Optional[str] = Field(None, description="Moderation confidence")
     
+    # Validators
+    @field_validator('session_id', mode='before')
+    @classmethod
+    def convert_objectid_to_string(cls, v):
+        """Convert ObjectId to string for session_id"""
+        if isinstance(v, ObjectId):
+            return str(v)
+        return v
+    
+    @field_validator('metadata', 'generation_config', mode='before')
+    @classmethod
+    def ensure_dict_not_none(cls, v):
+        """Convert None to empty dict"""
+        return v if v is not None else {}
+    
+    @field_validator('attachments', 'function_calls', mode='before')
+    @classmethod
+    def ensure_list_not_none(cls, v):
+        """Convert None to empty list"""
+        return v if v is not None else []
+    
     class Config(MongoBaseConfig):
         # Schema extra for documentation
-        json_schema_extra = {  # UPDATED: schema_extra -> json_schema_extra
+        json_schema_extra = {
             "example": {
                 "session_id": "session_123",
                 "user_id": "user_456",
@@ -95,7 +117,7 @@ class Message(BaseModel):
             "is_pinned": self.is_pinned,
             "is_hidden": self.is_hidden,
             "model_name": self.model_name,
-            "generation_config": self.generation_config or {},  # UPDATED
+            "generation_config": self.generation_config or {},
             "temperature": self.temperature,
             "is_flagged": self.is_flagged,
             "moderation_score": self.moderation_score,
@@ -121,6 +143,10 @@ class Message(BaseModel):
     @classmethod
     def create_from_dict(cls, data: Dict[str, Any]) -> "Message":
         """Create a Message instance from dictionary data"""
+        # Handle MongoDB's _id field - convert ObjectId to string for our id field
+        if "_id" in data:
+            data["id"] = str(data.pop("_id"))
+        
         # Convert datetime strings if present
         datetime_fields = ["created_at", "updated_at", "completed_at", "regenerated_at"]
         for field in datetime_fields:
@@ -139,7 +165,7 @@ class Message(BaseModel):
             "content", "status", "completed_at", "regenerated_at",
             "feedback_score", "feedback_text", "is_pinned", "is_hidden",
             "tokens_used", "metadata", "attachments", "function_calls",
-            "model_name", "generation_config", "temperature", "updated_at"  # UPDATED
+            "model_name", "generation_config", "temperature", "updated_at"
         ]
         
         for field in updatable_fields:
@@ -153,8 +179,8 @@ class Message(BaseModel):
                 else:
                     setattr(self, field, data[field])
         
-        # Auto-update the updated_at timestamp
-        self.updated_at = datetime.utcnow()
+        # Auto-update the updated_at timestamp with timezone-aware datetime
+        self.updated_at = datetime.now(timezone.utc)
     
     @property
     def is_ai_message(self) -> bool:
