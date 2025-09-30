@@ -58,7 +58,7 @@ class ChatService:
         try:
             # Extract data from stream request
             session_id = stream_data.get("session_id")
-            message_content = stream_data.get("message", "")
+            message_content = stream_data.get("content", "")
             attachments = stream_data.get("attachments", [])
             model_config = stream_data.get("model_config", {})
             

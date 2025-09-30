@@ -222,6 +222,8 @@ export const chatService = {
         requestData.model_config = data.modelConfig;
       }
 
+      console.log('Sending stream request:', requestData); // ← Add this debug line
+
       await apiClient.stream(
         API_ENDPOINTS.CHAT.STREAM_MESSAGE,
         requestData,
