@@ -4,14 +4,11 @@ import {
   BookOpen,
   Brain,
   Calculator,
-  Clock,
   Code,
   FileText,
   Languages,
   Lightbulb,
-  MessageSquare,
   Microscope,
-  Star,
   Target,
   TrendingUp,
 } from 'lucide-react';
@@ -21,7 +18,7 @@ import PillButton from '../../components/ui/PillButton';
 import SubjectCard from '../../components/ui/SubjectCard';
 import { useChatStore } from '../../stores/ChatStore';
 import { QuickAction, Subject } from '../../types/uiTypes';
-import { formatTimestamp } from '../../utils/dateUtils';
+import SessionList from '../../components/chat/SessionList';
 
 const NewChat: React.FC = () => {
   const navigate = useNavigate();
@@ -32,7 +29,6 @@ const NewChat: React.FC = () => {
     selectedAction,
     userText,
     isSending,
-    error,
     loadSessions,
     setUserText,
     setSelectedSubject,
@@ -215,55 +211,22 @@ const NewChat: React.FC = () => {
         onToggle={() => setSidebarOpen(!sidebarOpen)}
         headerHeight={69}
       >
-        <div className="p-4">
-          <button
-            className="w-full btn btn-primary mb-4 flex items-center justify-center space-x-2"
-            onClick={() => {
-              // Clear any selected state
-              setSelectedSubject(null);
-              setSelectedAction(null);
-              setUserText('');
-              setSidebarOpen(false);
-            }}
-          >
-            <MessageSquare className="w-4 h-4" />
-            <span>New Chat</span>
-          </button>
-
-          <div className="space-y-2">
-            <div className="text-xs font-mono text-base-content/60 uppercase tracking-wide mb-2">
-              Recent Sessions
-            </div>
-            {sessions.map((session) => (
-              <div
-                key={session.id}
-                className="p-3 rounded-lg border border-base-300/50 bg-base-100/50 hover:bg-base-200/50 transition-colors cursor-pointer group"
-                onClick={() => handleSessionClick(session.id)}
-              >
-                <div className="flex items-start justify-between mb-2">
-                  <h4 className="font-medium text-sm text-base-content truncate flex-1 mr-3">
-                    {session.title}
-                  </h4>
-                  <div className="flex items-center space-x-1 flex-shrink-0">
-                    {session.isStarred && (
-                      <Star className="w-3 h-3 text-warning fill-current" />
-                    )}
-                    <Clock className="w-3 h-3 text-base-content/40" />
-                  </div>
-                </div>
-                <p className="text-xs text-base-content/60 truncate mb-2">
-                  {session.lastMessage}
-                </p>
-                <div className="text-xs text-base-content/40">
-                  {formatTimestamp(session.updated_at)}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        <SessionList
+          sessions={sessions}
+          onNewChat={() => {
+            setSelectedSubject(null);
+            setSelectedAction(null);
+            setUserText('');
+            setSidebarOpen(false);
+          }}
+          onSessionClick={(sessionId) => {
+            navigate(`/chat/${sessionId}`);
+          }}
+          newChatButtonEnabled={false}
+        />
       </SidebarComponent>
 
-      {/* Main Content - Always centered for new chat */}
+      {/* Main Content */}
       <div className="flex-1 flex flex-col justify-center items-center py-12">
         <div className="max-w-4xl w-full px-6">
           {/* Header */}

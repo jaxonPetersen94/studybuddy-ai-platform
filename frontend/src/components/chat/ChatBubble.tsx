@@ -124,41 +124,53 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({
             {onCopy && (
               <button
                 onClick={onCopy}
-                className="p-1.5 rounded-lg hover:bg-base-200 transition-colors tooltip tooltip-top"
+                className="p-1.5 rounded-lg hover:bg-base-200 transition-all tooltip tooltip-top cursor-pointer group/btn"
                 data-tip="Copy message"
                 aria-label="Copy message"
               >
-                <Copy className="w-3.5 h-3.5 text-base-content/60" />
+                <Copy
+                  className="w-3.5 h-3.5 text-base-content/60 transition-all group-hover/btn:text-base-content group-hover/btn:scale-110 group-hover/btn:-translate-y-0.5"
+                  style={{ filter: 'drop-shadow(0 0 0 transparent)' }}
+                />
               </button>
             )}
             {onLike && (
               <button
                 onClick={onLike}
-                className="p-1.5 rounded-lg hover:bg-base-200 transition-colors tooltip tooltip-top"
+                className="p-1.5 rounded-lg hover:bg-base-200 transition-all tooltip tooltip-top cursor-pointer group/btn"
                 data-tip="Good response"
                 aria-label="Like response"
               >
-                <ThumbsUp className="w-3.5 h-3.5 text-base-content/60" />
+                <ThumbsUp
+                  className="w-3.5 h-3.5 text-base-content/60 transition-all group-hover/btn:text-success group-hover/btn:scale-110 group-hover/btn:-translate-y-0.5"
+                  style={{ filter: 'drop-shadow(0 0 0 transparent)' }}
+                />
               </button>
             )}
             {onDislike && (
               <button
                 onClick={onDislike}
-                className="p-1.5 rounded-lg hover:bg-base-200 transition-colors tooltip tooltip-top"
+                className="p-1.5 rounded-lg hover:bg-base-200 transition-all tooltip tooltip-top cursor-pointer group/btn"
                 data-tip="Poor response"
                 aria-label="Dislike response"
               >
-                <ThumbsDown className="w-3.5 h-3.5 text-base-content/60" />
+                <ThumbsDown
+                  className="w-3.5 h-3.5 text-base-content/60 transition-all group-hover/btn:text-error group-hover/btn:scale-110 group-hover/btn:-translate-y-0.5"
+                  style={{ filter: 'drop-shadow(0 0 0 transparent)' }}
+                />
               </button>
             )}
             {onRegenerate && (
               <button
                 onClick={onRegenerate}
-                className="p-1.5 rounded-lg hover:bg-base-200 transition-colors tooltip tooltip-top"
+                className="p-1.5 rounded-lg hover:bg-base-200 transition-all tooltip tooltip-top cursor-pointer group/btn"
                 data-tip="Regenerate response"
                 aria-label="Regenerate response"
               >
-                <RotateCcw className="w-3.5 h-3.5 text-base-content/60" />
+                <RotateCcw
+                  className="w-3.5 h-3.5 text-base-content/60 transition-all group-hover/btn:text-base-content group-hover/btn:scale-110 group-hover/btn:-translate-y-0.5"
+                  style={{ filter: 'drop-shadow(0 0 0 transparent)' }}
+                />
               </button>
             )}
           </div>

@@ -1,11 +1,12 @@
 import React, { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Clock, MessageSquare, Star, ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import ChatBubble from '../../components/chat/ChatBubble';
 import ChatInput from '../../components/chat/ChatInput';
 import SidebarComponent from '../../components/layout/Sidebar';
 import { useChatStore } from '../../stores/ChatStore';
 import { formatTimestamp } from '../../utils/dateUtils';
+import SessionList from '../../components/chat/SessionList';
 
 const ChatSession: React.FC = () => {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -17,8 +18,6 @@ const ChatSession: React.FC = () => {
     sessions,
     userText,
     isSending,
-
-    // Actions
     sendMessage,
     loadSession,
     loadSessions,
@@ -88,50 +87,12 @@ const ChatSession: React.FC = () => {
         onToggle={() => setSidebarOpen(!sidebarOpen)}
         headerHeight={69}
       >
-        <div className="p-4">
-          <button
-            className="w-full btn btn-primary mb-4 flex items-center justify-center space-x-2"
-            onClick={handleNewChat}
-          >
-            <MessageSquare className="w-4 h-4" />
-            <span>New Chat</span>
-          </button>
-
-          <div className="space-y-2">
-            <div className="text-xs font-mono text-base-content/60 uppercase tracking-wide mb-2">
-              Recent Sessions
-            </div>
-            {sessions.map((session) => (
-              <div
-                key={session.id}
-                className={`p-3 rounded-lg border transition-colors cursor-pointer group ${
-                  session.id === currentSession?.id
-                    ? 'border-primary/50 bg-primary/10'
-                    : 'border-base-300/50 bg-base-100/50 hover:bg-base-200/50'
-                }`}
-                onClick={() => handleSessionClick(session.id)}
-              >
-                <div className="flex items-start justify-between mb-2">
-                  <h4 className="font-medium text-sm text-base-content truncate flex-1 mr-3">
-                    {session.title}
-                  </h4>
-                  <div className="flex items-center space-x-1 flex-shrink-0">
-                    {session.isStarred && (
-                      <Star className="w-3 h-3 text-warning fill-current" />
-                    )}
-                    <Clock className="w-3 h-3 text-base-content/40" />
-                  </div>
-                </div>
-                <p className="text-xs text-base-content/60 truncate mb-2">
-                  {session.lastMessage}
-                </p>
-                <div className="text-xs text-base-content/40">
-                  {formatTimestamp(session.updated_at)}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        <SessionList
+          sessions={sessions}
+          currentSessionId={currentSession?.id}
+          onNewChat={handleNewChat}
+          onSessionClick={handleSessionClick}
+        />
       </SidebarComponent>
 
       {/* Chat Header */}
@@ -161,7 +122,7 @@ const ChatSession: React.FC = () => {
         </div>
       </div>
 
-      {/* Chat Messages - Centered */}
+      {/* Chat Messages */}
       <div className="flex-1 w-full overflow-y-auto flex justify-center">
         <div className="w-full max-w-4xl px-6">
           <div className="space-y-4 py-6">
@@ -199,7 +160,7 @@ const ChatSession: React.FC = () => {
         </div>
       </div>
 
-      {/* Chat Input - Centered */}
+      {/* Chat Input */}
       <div className="w-full flex justify-center">
         <div className="w-full max-w-4xl px-6 pb-6">
           <ChatInput
