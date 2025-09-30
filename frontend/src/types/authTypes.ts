@@ -66,11 +66,11 @@ export interface AuthResponse {
   message?: string;
 }
 
-export interface ForgotPasswordData {
+export interface ForgotPasswordResponseData {
   success: boolean;
 }
 
-export type ForgotPasswordResponse = ApiResponse<ForgotPasswordData>;
+export type ForgotPasswordResponse = ApiResponse<ForgotPasswordResponseData>;
 
 export interface ResetPasswordResponse {
   success: boolean;
