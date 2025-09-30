@@ -71,8 +71,22 @@ const ChatSession: React.FC = () => {
   // Show loading state while session is loading
   if (!currentSession && sessionId) {
     return (
-      <div className="min-h-[calc(100vh-69px)] flex items-center justify-center">
-        <div className="loading loading-spinner loading-lg"></div>
+      <div className="min-h-[calc(100vh-69px)] flex flex-col">
+        <SidebarComponent
+          title="Chat History"
+          isOpen={isSidebarOpen}
+          onToggle={() => setSidebarOpen(!isSidebarOpen)}
+          headerHeight={69}
+        >
+          <SessionList
+            sessions={sessions}
+            onNewChat={handleNewChat}
+            onSessionClick={handleSessionClick}
+          />
+        </SidebarComponent>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="loading loading-spinner loading-lg"></div>
+        </div>
       </div>
     );
   }
@@ -94,85 +108,88 @@ const ChatSession: React.FC = () => {
         />
       </SidebarComponent>
 
-      {/* Chat Header */}
-      <div className="border-b border-base-300/50 bg-base-100/80 backdrop-blur-sm">
-        <div className="max-w-4xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <button
-                onClick={handleNewChat}
-                className="btn btn-ghost btn-sm flex items-center space-x-2"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                <span>New Chat</span>
-              </button>
-              {currentSession && (
-                <div className="hidden sm:block">
-                  <h1 className="font-semibold text-base-content truncate max-w-md">
-                    {currentSession.title}
-                  </h1>
-                  <p className="text-xs text-base-content/60">
-                    {formatTimestamp(currentSession.created_at)}
-                  </p>
-                </div>
-              )}
+      {/* Main Content Area - Centered */}
+      <div className="flex-1 flex flex-col items-center">
+        {/* Chat Header */}
+        <div className="w-full border-b border-base-300/50 bg-base-100/80 backdrop-blur-sm">
+          <div className="max-w-4xl w-full mx-auto px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={handleNewChat}
+                  className="btn btn-ghost btn-sm flex items-center space-x-2"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  <span>New Chat</span>
+                </button>
+                {currentSession && (
+                  <div className="hidden sm:block">
+                    <h1 className="font-semibold text-base-content truncate max-w-md">
+                      {currentSession.title}
+                    </h1>
+                    <p className="text-xs text-base-content/60">
+                      {formatTimestamp(currentSession.created_at)}
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Chat Messages */}
-      <div className="flex-1 w-full overflow-y-auto flex justify-center">
-        <div className="w-full max-w-4xl px-6">
-          <div className="space-y-4 py-6">
-            {currentMessages.map((msg) => (
-              <div key={msg.id} className="group">
-                <ChatBubble
-                  message={msg.content}
-                  role={msg.role}
-                  timestamp={msg.created_at}
-                  isTyping={msg.isTyping}
-                  onCopy={
-                    msg.role !== 'user'
-                      ? () => handleCopyMessage(msg.content)
-                      : undefined
-                  }
-                  onLike={
-                    msg.role !== 'user'
-                      ? () => handleLikeMessage(msg.id)
-                      : undefined
-                  }
-                  onDislike={
-                    msg.role !== 'user'
-                      ? () => handleDislikeMessage(msg.id)
-                      : undefined
-                  }
-                  onRegenerate={
-                    msg.role !== 'user'
-                      ? () => handleRegenerateMessage(msg.id)
-                      : undefined
-                  }
-                />
-              </div>
-            ))}
+        {/* Chat Messages */}
+        <div className="flex-1 w-full overflow-y-auto flex justify-center">
+          <div className="w-full max-w-4xl px-6">
+            <div className="space-y-4 py-6">
+              {currentMessages.map((msg) => (
+                <div key={msg.id} className="group">
+                  <ChatBubble
+                    message={msg.content}
+                    role={msg.role}
+                    timestamp={msg.created_at}
+                    isTyping={msg.isTyping}
+                    onCopy={
+                      msg.role !== 'user'
+                        ? () => handleCopyMessage(msg.content)
+                        : undefined
+                    }
+                    onLike={
+                      msg.role !== 'user'
+                        ? () => handleLikeMessage(msg.id)
+                        : undefined
+                    }
+                    onDislike={
+                      msg.role !== 'user'
+                        ? () => handleDislikeMessage(msg.id)
+                        : undefined
+                    }
+                    onRegenerate={
+                      msg.role !== 'user'
+                        ? () => handleRegenerateMessage(msg.id)
+                        : undefined
+                    }
+                  />
+                </div>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Chat Input */}
-      <div className="w-full flex justify-center">
-        <div className="w-full max-w-4xl px-6 pb-6">
-          <ChatInput
-            value={userText}
-            onChange={setUserText}
-            onSend={handleSendMessage}
-            placeholder={
-              currentSession?.subject
-                ? `Continue your ${currentSession.subject} conversation...`
-                : 'Type your message...'
-            }
-            disabled={isSending}
-          />
+        {/* Chat Input */}
+        <div className="w-full flex justify-center">
+          <div className="w-full max-w-4xl px-6 pb-6">
+            <ChatInput
+              value={userText}
+              onChange={setUserText}
+              onSend={handleSendMessage}
+              placeholder={
+                currentSession?.subject
+                  ? `Continue your ${currentSession.subject} conversation...`
+                  : 'Type your message...'
+              }
+              disabled={isSending}
+            />
+          </div>
         </div>
       </div>
     </div>
