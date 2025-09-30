@@ -15,10 +15,8 @@ const ChatSession: React.FC = () => {
     currentSession,
     currentMessages,
     sessions,
-    isTyping,
     userText,
     isSending,
-    error,
 
     // Actions
     sendMessage,
@@ -197,13 +195,6 @@ const ChatSession: React.FC = () => {
                 />
               </div>
             ))}
-
-            {/* Typing indicator */}
-            {isTyping && (
-              <div className="group">
-                <ChatBubble message="" role="assistant" isTyping={true} />
-              </div>
-            )}
           </div>
         </div>
       </div>
@@ -220,7 +211,6 @@ const ChatSession: React.FC = () => {
                 ? `Continue your ${currentSession.subject} conversation...`
                 : 'Type your message...'
             }
-            isTyping={isTyping || isSending}
             disabled={isSending}
           />
         </div>

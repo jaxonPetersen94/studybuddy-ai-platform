@@ -78,4 +78,80 @@ export const apiClient = {
   delete<T>(endpoint: string, token?: string): Promise<T> {
     return this.request<T>(endpoint, { method: 'DELETE', token });
   },
+
+  async stream(
+    endpoint: string,
+    data: unknown,
+    token: string,
+    onData: (data: any) => void,
+  ): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+
+      let errorMessage = 'Stream request failed';
+      let errorCode: string | undefined;
+
+      if (errorData.error) {
+        errorMessage = errorData.error;
+      } else if (errorData.message) {
+        errorMessage = errorData.message;
+      }
+
+      if (errorData.code) {
+        errorCode = errorData.code;
+      }
+
+      throw new ApiError(response.status, errorMessage, errorCode, errorData);
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) {
+      throw new Error('Response body is not readable');
+    }
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const dataStr = line.slice(6).trim();
+
+            if (dataStr === '[DONE]') {
+              return;
+            }
+
+            try {
+              const parsed = JSON.parse(dataStr);
+              onData(parsed);
+            } catch (e) {
+              console.warn('Failed to parse SSE data:', dataStr, e);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      throw error;
+    }
+  },
 };
+
+export { ApiError };

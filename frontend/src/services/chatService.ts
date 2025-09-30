@@ -4,7 +4,6 @@ import type {
   ChatSession,
   ChatMessage,
   SendMessageRequest,
-  SendMessageResponse,
   CreateSessionRequest,
   CreateSessionResponse,
   GetSessionsResponse,
@@ -194,72 +193,80 @@ export const chatService = {
     return this.updateSession(sessionId, { isStarred: false }, token);
   },
 
-  // Message Management
-  async sendMessage(
+  // Message Management - Streaming Only
+  async sendMessageStream(
     data: SendMessageRequest,
     token: string,
-  ): Promise<ChatMessage> {
+    onToken: (token: string) => void,
+    onComplete: (message: ChatMessage) => void,
+    onError: (error: Error) => void,
+  ): Promise<void> {
     try {
-      const response = await apiClient.post<SendMessageResponse>(
-        API_ENDPOINTS.CHAT.MESSAGES,
-        data,
+      // Build request matching backend's StreamMessageRequest schema
+      const requestData: Record<string, any> = {
+        content: data.content, // Backend expects 'content', not 'message'
+      };
+
+      // Only include sessionId if it exists (use camelCase for Pydantic alias)
+      if (data.sessionId) {
+        requestData.sessionId = data.sessionId;
+      }
+
+      // Include attachments if provided
+      if (data.attachments && data.attachments.length > 0) {
+        requestData.attachments = data.attachments;
+      }
+
+      // Include model config if provided
+      if (data.modelConfig) {
+        requestData.model_config = data.modelConfig;
+      }
+
+      await apiClient.stream(
+        API_ENDPOINTS.CHAT.STREAM_MESSAGE,
+        requestData,
         token,
+        (parsed) => {
+          // Handle different event types
+          if (parsed.type === 'content_delta') {
+            onToken(parsed.content);
+          } else if (parsed.type === 'ai_message_completed') {
+            const message: ChatMessage = {
+              id: parsed.message.id,
+              sessionId: parsed.message.session_id,
+              user_id: parsed.message.user_id,
+              role: parsed.message.role,
+              status: parsed.message.status,
+              message_type: parsed.message.message_type || 'text',
+              content: parsed.message.content,
+              created_at: parsed.message.created_at,
+              updated_at: parsed.message.updated_at,
+              completed_at: parsed.message.completed_at,
+              regenerated_at: parsed.message.regenerated_at,
+              attachments: parsed.message.attachments || [],
+              function_calls: parsed.message.function_calls || [],
+              tokens_used: parsed.message.tokens_used || 0,
+              parent_message_id: parsed.message.parent_message_id,
+              thread_id: parsed.message.thread_id,
+              feedback_score: parsed.message.feedback_score,
+              feedback_text: parsed.message.feedback_text,
+              is_pinned: parsed.message.is_pinned || false,
+              is_hidden: parsed.message.is_hidden || false,
+              model_name: parsed.message.model_name,
+              generation_config: parsed.message.generation_config || {},
+              temperature: parsed.message.temperature,
+              is_flagged: parsed.message.is_flagged || false,
+              moderation_score: parsed.message.moderation_score,
+              metadata: parsed.message.metadata || {},
+            };
+            onComplete(message);
+          } else if (parsed.type === 'error') {
+            throw new Error(parsed.error || 'Stream error occurred');
+          }
+        },
       );
-
-      return {
-        id: response.data.id,
-        sessionId: response.data.sessionId,
-        user_id: response.data.user_id,
-        role: 'user',
-        status: response.data.status,
-        message_type: response.data.message_type,
-        content: response.data.content,
-        created_at: response.data.created_at,
-        updated_at: response.data.updated_at,
-        completed_at: response.data.completed_at,
-        regenerated_at: response.data.regenerated_at,
-        attachments: data.attachments,
-        function_calls: response.data.function_calls,
-        tokens_used: response.data.tokens_used || 0,
-        parent_message_id: response.data.parent_message_id,
-        thread_id: response.data.thread_id,
-        feedback_score: response.data.feedback_score,
-        feedback_text: response.data.feedback_text,
-        is_pinned: response.data.is_pinned || false,
-        is_hidden: response.data.is_hidden || false,
-        model_name: response.data.model_name,
-        generation_config: response.data.generation_config,
-        temperature: response.data.temperature,
-        is_flagged: response.data.is_flagged || false,
-        moderation_score: response.data.moderation_score,
-        metadata: response.data.metadata,
-      };
-    } catch (error: any) {
-      if (error.status === 400) {
-        const apiError: ApiError = {
-          code: 'INVALID_MESSAGE_DATA',
-          message:
-            error.message || 'Invalid message data. Please check your input.',
-          details: { status: 400 },
-        };
-        throw apiError;
-      }
-
-      if (error.status === 429) {
-        const apiError: ApiError = {
-          code: 'RATE_LIMIT_EXCEEDED',
-          message: 'Too many messages sent. Please slow down.',
-          details: { status: 429 },
-        };
-        throw apiError;
-      }
-
-      const apiError: ApiError = {
-        code: error.code || 'UNKNOWN_ERROR',
-        message: error.message || 'Failed to send message',
-        details: { status: error.status, originalError: error },
-      };
-      throw apiError;
+    } catch (error) {
+      onError(error as Error);
     }
   },
 
@@ -384,85 +391,7 @@ export const chatService = {
     }
   },
 
-  // Utility methods for stream handling (if your API supports streaming)
-  async sendMessageStream(
-    data: SendMessageRequest,
-    token: string,
-    onToken: (token: string) => void,
-    onComplete: (message: ChatMessage) => void,
-    onError: (error: Error) => void,
-  ): Promise<void> {
-    try {
-      const requestData = {
-        ...data,
-        stream: true,
-      };
-
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}${API_ENDPOINTS.CHAT.STREAM_MESSAGE}`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(requestData),
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const reader = response.body?.getReader();
-      if (!reader) {
-        throw new Error('Response body is not readable');
-      }
-
-      const decoder = new TextDecoder();
-      let buffer = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6);
-
-            if (data === '[DONE]') {
-              return;
-            }
-
-            try {
-              const parsed = JSON.parse(data);
-
-              if (parsed.type === 'token') {
-                onToken(parsed.content);
-              } else if (parsed.type === 'complete') {
-                const message: ChatMessage = {
-                  ...parsed.message,
-                  timestamp: new Date(parsed.message.timestamp),
-                };
-                onComplete(message);
-              }
-            } catch (e) {
-              console.warn('Failed to parse SSE data:', data);
-            }
-          }
-        }
-      }
-    } catch (error) {
-      onError(error as Error);
-    }
-  },
-
-  // File upload helper (if your API supports file attachments)
+  // File upload helper
   async uploadAttachment(
     file: File,
     token: string,
@@ -516,7 +445,7 @@ export const chatService = {
     }
   },
 
-  // Search functionality (if supported by your API)
+  // Search functionality
   async searchSessions(
     query: string,
     token: string,

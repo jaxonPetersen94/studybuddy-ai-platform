@@ -1,5 +1,23 @@
 import { ApiResponse } from './apiTypes';
 
+export interface ChatAttachment {
+  id: string;
+  name: string;
+  type: string;
+  size: number;
+  url?: string;
+  data?: string;
+}
+
+export interface ChatMessageMetadata {
+  regenerationCount?: number;
+  liked?: boolean;
+  disliked?: boolean;
+  copied?: boolean;
+  tokens?: number;
+  processingTime?: number;
+}
+
 export interface ChatMessage {
   id: string;
   sessionId: string;
@@ -30,24 +48,6 @@ export interface ChatMessage {
   isTyping?: boolean;
 }
 
-export interface ChatAttachment {
-  id: string;
-  name: string;
-  type: string;
-  size: number;
-  url?: string;
-  data?: string;
-}
-
-export interface ChatMessageMetadata {
-  regenerationCount?: number;
-  liked?: boolean;
-  disliked?: boolean;
-  copied?: boolean;
-  tokens?: number;
-  processingTime?: number;
-}
-
 export interface ChatSession {
   created_at: string;
   id: string;
@@ -64,12 +64,25 @@ export interface ChatSession {
   quickAction?: string;
 }
 
+export interface ModelConfig {
+  model?: string;
+  temperature?: number;
+  max_tokens?: number;
+  top_p?: number;
+  top_k?: number;
+  frequency_penalty?: number;
+  presence_penalty?: number;
+  functions?: any[];
+  tools?: any[];
+}
+
 export interface SendMessageRequest {
   content: string;
   sessionId?: string;
   subject?: string;
   quickAction?: string;
   attachments?: ChatAttachment[];
+  modelConfig?: ModelConfig;
 }
 
 export interface SendMessageData {

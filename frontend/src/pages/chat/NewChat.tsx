@@ -163,7 +163,10 @@ const NewChat: React.FC = () => {
         quickAction: selectedAction?.id || undefined,
       });
 
-      // Navigate to the new chat session
+      // Clear the input
+      setUserText('');
+
+      // Navigate immediately - the user message is already in the store
       navigate(`/chat/${newSession.id}`);
     } catch (error) {
       console.error('Failed to create chat:', error);
@@ -309,7 +312,6 @@ const NewChat: React.FC = () => {
               onChange={handleMessageChange}
               onSend={handleSendMessage}
               placeholder={getPlaceholder()}
-              isTyping={isSending}
               disabled={isSending}
             />
           </div>

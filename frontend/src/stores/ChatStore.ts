@@ -62,18 +62,15 @@ interface ChatStore {
   starSession: (sessionId: string) => Promise<void>;
   unstarSession: (sessionId: string) => Promise<void>;
 
-  // Message management actions
-  sendMessage: (data: SendMessageRequest) => Promise<ChatMessage>;
+  // Message management actions (streaming only)
+  sendMessage: (
+    data: SendMessageRequest,
+    onToken?: (token: string) => void,
+  ) => Promise<ChatMessage>;
   loadMessages: (sessionId: string, refresh?: boolean) => Promise<void>;
   loadMoreMessages: () => Promise<void>;
   regenerateMessage: (data: RegenerateMessageRequest) => Promise<void>;
   submitMessageFeedback: (data: MessageFeedbackRequest) => Promise<void>;
-
-  // Streaming support
-  sendMessageStream: (
-    data: SendMessageRequest,
-    onToken?: (token: string) => void,
-  ) => Promise<ChatMessage>;
 
   // Search functionality
   searchSessions: (query: string) => Promise<void>;
@@ -203,7 +200,7 @@ export const useChatStore = create<ChatStore>()(
         }
       },
 
-      // Combined create session and send message for new chat flow
+      // Combined create session and send message for new chat flow (using streaming)
       createSessionAndSend: async (
         data: SendMessageRequest & {
           title?: string;
@@ -234,12 +231,17 @@ export const useChatStore = create<ChatStore>()(
             currentSession: newSession,
             sessions: [newSession, ...state.sessions],
             hasStartedChat: true,
-            currentMessages: [],
+            currentMessages: [], // Start with empty messages
             isLoading: false,
           }));
 
-          // Send the initial message
-          await get().sendMessage(data);
+          // Send message which will add both user and AI messages
+          // DON'T await - let it run in background
+          get()
+            .sendMessage(data)
+            .catch((error) => {
+              console.error('Error sending initial message:', error);
+            });
 
           return newSession;
         } catch (error: any) {
@@ -256,17 +258,26 @@ export const useChatStore = create<ChatStore>()(
           const token = get()._getAuthToken();
           const session = await chatService.getSession(sessionId, token);
 
+          const { currentSession, currentMessages } = get();
+
+          // Only load messages if we're switching to a different session
+          // or if we don't have messages for this session yet
+          const shouldLoadMessages =
+            currentSession?.id !== sessionId || currentMessages.length === 0;
+
           set({
             currentSession: session,
-            currentMessages: [],
-            hasStartedChat: true, // Always true for existing sessions
+            hasStartedChat: true,
             messagesPage: 1,
             hasMoreMessages: true,
             isLoading: false,
           });
 
-          // Load messages for this session
-          await get().loadMessages(sessionId, true);
+          // Only fetch messages if needed
+          if (shouldLoadMessages) {
+            set({ currentMessages: [] }); // Clear old messages
+            await get().loadMessages(sessionId, true);
+          }
         } catch (error: any) {
           set({ isLoading: false, currentSession: null });
           await get()._handleApiError(error, 'load session');
@@ -402,90 +413,8 @@ export const useChatStore = create<ChatStore>()(
         }
       },
 
-      // Message management actions
-      sendMessage: async (data: SendMessageRequest) => {
-        set({ isSending: true, error: null });
-
-        try {
-          const token = get()._getAuthToken();
-          const { currentSession } = get();
-
-          // Current session should exist when called from ChatSession component
-          if (!currentSession) {
-            throw new Error('No active session found');
-          }
-
-          // Add user message immediately
-          const userMessage: ChatMessage = {
-            id: `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            sessionId: currentSession.id,
-            user_id: '',
-            content: data.content,
-            role: 'user',
-            status: 'pending',
-            message_type: 'text',
-            created_at: new Date().toISOString(),
-            updated_at: null,
-            completed_at: null,
-            regenerated_at: null,
-            attachments: data.attachments || [],
-            function_calls: [],
-            tokens_used: 0,
-            parent_message_id: null,
-            thread_id: null,
-            feedback_score: null,
-            feedback_text: null,
-            is_pinned: false,
-            is_hidden: false,
-            model_name: null,
-            generation_config: {},
-            temperature: null,
-            is_flagged: false,
-            moderation_score: null,
-            metadata: {},
-          };
-
-          set((state) => ({
-            currentMessages: [...state.currentMessages, userMessage],
-            hasStartedChat: true,
-            isTyping: true,
-          }));
-
-          // Send message to API
-          const sentMessage = await chatService.sendMessage(
-            {
-              ...data,
-              sessionId: currentSession.id,
-            },
-            token,
-          );
-
-          // Replace temporary message with actual sent message
-          set((state) => ({
-            currentMessages: state.currentMessages.map((msg) =>
-              msg.id === userMessage.id ? sentMessage : msg,
-            ),
-            isSending: false,
-            isTyping: false,
-          }));
-
-          return sentMessage;
-        } catch (error: any) {
-          set({ isSending: false, isTyping: false });
-
-          // Remove temporary message on error
-          set((state) => ({
-            currentMessages: state.currentMessages.filter(
-              (msg) => !msg.id.startsWith('temp-'),
-            ),
-          }));
-
-          await get()._handleApiError(error, 'send message');
-          throw error;
-        }
-      },
-
-      sendMessageStream: async (
+      // Message management - now streaming only
+      sendMessage: async (
         data: SendMessageRequest,
         onToken?: (token: string) => void,
       ) => {
@@ -495,7 +424,6 @@ export const useChatStore = create<ChatStore>()(
           const token = get()._getAuthToken();
           const { currentSession } = get();
 
-          // Current session should exist when streaming
           if (!currentSession) {
             throw new Error('No active session found');
           }
@@ -585,7 +513,11 @@ export const useChatStore = create<ChatStore>()(
               set((state) => ({
                 currentMessages: state.currentMessages.map((msg) =>
                   msg.id === streamingMessage.id
-                    ? { ...msg, content: msg.content + tokenText }
+                    ? {
+                        ...msg,
+                        content: msg.content + tokenText,
+                        isTyping: false, // ← Add this line
+                      }
                     : msg,
                 ),
               }));
@@ -600,7 +532,7 @@ export const useChatStore = create<ChatStore>()(
                     return { ...message, isTyping: false };
                   }
                   if (msg.id === userMessage.id) {
-                    return { ...msg, id: message.id }; // Update with real ID if provided
+                    return { ...msg, status: 'completed' };
                   }
                   return msg;
                 }),

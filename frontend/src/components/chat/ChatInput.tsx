@@ -9,7 +9,6 @@ interface ChatInputProps {
   onVoiceInput?: () => void;
   onCameraInput?: () => void;
   placeholder?: string;
-  isTyping?: boolean;
   disabled?: boolean;
   maxHeight?: number;
 }
@@ -22,7 +21,6 @@ const ChatInput: React.FC<ChatInputProps> = ({
   onVoiceInput,
   onCameraInput,
   placeholder = 'Ask me anything, upload a file, or describe what you want to learn...',
-  isTyping = false,
   disabled = false,
   maxHeight = 120,
 }) => {
@@ -169,26 +167,6 @@ const ChatInput: React.FC<ChatInputProps> = ({
             </button>
           </div>
         </div>
-
-        {/* Typing indicator */}
-        {isTyping && (
-          <div
-            className="absolute -bottom-8 left-4 flex items-center gap-3 text-sm text-base-content/60 select-none"
-            role="status"
-            aria-label="AI is thinking"
-          >
-            <div className="flex gap-1" aria-hidden="true">
-              {[0, 0.1, 0.2].map((delay, index) => (
-                <div
-                  key={index}
-                  className="w-2 h-2 bg-primary rounded-full animate-bounce"
-                  style={{ animationDelay: `${delay}s` }}
-                />
-              ))}
-            </div>
-            <span className="font-mono text-xs">AI is thinking...</span>
-          </div>
-        )}
       </div>
     </div>
   );
