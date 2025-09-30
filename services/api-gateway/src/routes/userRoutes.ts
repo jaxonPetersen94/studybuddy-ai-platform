@@ -36,7 +36,7 @@ async function forwardRequest(
 }
 
 /**
- * Routes (forwarded to User Service)
+ * Auth Routes
  */
 router.post('/register', (req, res) =>
   forwardRequest(req, res, '/register', 'POST'),
@@ -51,6 +51,10 @@ router.post('/forgot-password', (req, res) =>
 router.post('/reset-password', (req, res) =>
   forwardRequest(req, res, '/reset-password', 'POST'),
 );
+
+/**
+ * Profile Routes
+ */
 router.get('/profile', (req, res) =>
   forwardRequest(req, res, '/profile', 'GET'),
 );
@@ -59,6 +63,48 @@ router.put('/profile', (req, res) =>
 );
 router.delete('/profile', (req, res) =>
   forwardRequest(req, res, '/profile', 'DELETE'),
+);
+
+/**
+ * Notification Routes
+ */
+router.get('/notifications', (req, res) => {
+  const queryString = new URLSearchParams(req.query as any).toString();
+  const path = `/notifications${queryString ? `?${queryString}` : ''}`;
+  forwardRequest(req, res, path, 'GET');
+});
+router.get('/notifications/unread-count', (req, res) =>
+  forwardRequest(req, res, '/notifications/unread-count', 'GET'),
+);
+router.get('/notifications/:id', (req, res) =>
+  forwardRequest(req, res, `/notifications/${req.params.id}`, 'GET'),
+);
+router.patch('/notifications/:id/read', (req, res) =>
+  forwardRequest(req, res, `/notifications/${req.params.id}/read`, 'PATCH'),
+);
+router.patch('/notifications/read-multiple', (req, res) =>
+  forwardRequest(req, res, '/notifications/read-multiple', 'PATCH'),
+);
+router.patch('/notifications/read-all', (req, res) =>
+  forwardRequest(req, res, '/notifications/read-all', 'PATCH'),
+);
+router.delete('/notifications/:id', (req, res) =>
+  forwardRequest(req, res, `/notifications/${req.params.id}`, 'DELETE'),
+);
+router.post('/notifications/delete-multiple', (req, res) =>
+  forwardRequest(req, res, '/notifications/delete-multiple', 'POST'),
+);
+router.delete('/notifications/delete-all', (req, res) =>
+  forwardRequest(req, res, '/notifications/delete-all', 'DELETE'),
+);
+router.get('/notifications/preferences', (req, res) =>
+  forwardRequest(req, res, '/notifications/preferences', 'GET'),
+);
+router.patch('/notifications/preferences', (req, res) =>
+  forwardRequest(req, res, '/notifications/preferences', 'PATCH'),
+);
+router.post('/notifications/test', (req, res) =>
+  forwardRequest(req, res, '/notifications/test', 'POST'),
 );
 
 /**

@@ -36,7 +36,6 @@ studybuddy-ai-platform/
 │   │   ├── logs/
 │   │   ├── Dockerfile
 │   │   └── pyproject.toml
-│   └── document-service/    # Document processing (planned)
 ├── docker-compose.yml       # Production deployment
 ├── docker-compose.dev.yml   # Development containers
 ├── .gitignore

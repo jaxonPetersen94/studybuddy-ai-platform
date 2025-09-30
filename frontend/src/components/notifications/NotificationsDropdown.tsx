@@ -1,72 +1,30 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Bell, X } from 'lucide-react';
 import NotificationCard from './NotificationCard';
+import { useNotificationStore } from '../../stores/NotificationStore';
 
 const NotificationsDropdown: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Mock notifications data
-  const [notifications, setNotifications] = useState([
-    {
-      id: '1',
-      type: 'success' as const,
-      title: 'Study Session Complete!',
-      message:
-        'Great job completing your 45-minute Machine Learning study session.',
-      timestamp: new Date(Date.now() - 5 * 60 * 1000), // 5 minutes ago
-      isRead: false,
-    },
-    {
-      id: '2',
-      type: 'info' as const,
-      title: 'New Assignment Available',
-      message:
-        'Your instructor has posted a new assignment for Data Structures.',
-      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
-      isRead: false,
-    },
-    {
-      id: '3',
-      type: 'warning' as const,
-      title: 'Deadline Reminder',
-      message: "Your Python project is due in 2 days. Don't forget to submit!",
-      timestamp: new Date(Date.now() - 8 * 60 * 60 * 1000), // 8 hours ago
-      isRead: true,
-    },
-    {
-      id: '4',
-      type: 'error' as const,
-      title: 'Quiz Attempt Failed',
-      message:
-        'Your last quiz attempt was not saved properly. Please try again.',
-      timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 day ago
-      isRead: true,
-    },
-    {
-      id: '5',
-      type: 'info' as const,
-      title: 'Weekly Progress Report',
-      message: 'Your study progress for this week is available to review.',
-      timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), // 3 days ago
-      isRead: true,
-    },
-  ]);
+  // Get notifications from store
+  const notifications = useNotificationStore((state) => state.notifications);
+  const isLoading = useNotificationStore((state) => state.isLoading);
+  const fetchNotifications = useNotificationStore(
+    (state) => state.fetchNotifications,
+  );
+  const markAsRead = useNotificationStore((state) => state.markAsRead);
+  const dismiss = useNotificationStore((state) => state.dismiss);
+  const getUnreadCount = useNotificationStore((state) => state.getUnreadCount);
 
-  const handleMarkAsRead = (id: string) => {
-    setNotifications((prev) =>
-      prev.map((notif) =>
-        notif.id === id ? { ...notif, isRead: true } : notif,
-      ),
-    );
-  };
+  const unreadCount = getUnreadCount();
 
-  const handleDismiss = (id: string) => {
-    setNotifications((prev) => prev.filter((notif) => notif.id !== id));
-  };
+  // Fetch notifications when component mounts
+  useEffect(() => {
+    fetchNotifications();
+  }, [fetchNotifications]);
 
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
-
+  // Handle click outside to close dropdown
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -112,7 +70,11 @@ const NotificationsDropdown: React.FC = () => {
 
           {/* Content */}
           <div className="max-h-96 overflow-y-auto">
-            {notifications.length > 0 ? (
+            {isLoading && notifications.length === 0 ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="loading loading-spinner loading-md"></div>
+              </div>
+            ) : notifications.length > 0 ? (
               <div className="divide-y divide-base-300/30">
                 {notifications.map((notification) => (
                   <NotificationCard
@@ -123,8 +85,8 @@ const NotificationsDropdown: React.FC = () => {
                     message={notification.message}
                     timestamp={notification.timestamp}
                     isRead={notification.isRead}
-                    onMarkAsRead={handleMarkAsRead}
-                    onDismiss={handleDismiss}
+                    onMarkAsRead={markAsRead}
+                    onDismiss={dismiss}
                   />
                 ))}
               </div>

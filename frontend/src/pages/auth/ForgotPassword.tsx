@@ -37,7 +37,6 @@ const ForgotPassword: React.FC = () => {
 
     try {
       await authService.forgotPassword({ email });
-      console.log('Resent password reset email to:', email);
     } catch (err: any) {
       console.error('Resend failed:', err);
       setError(err.message || 'Failed to resend email. Please try again.');

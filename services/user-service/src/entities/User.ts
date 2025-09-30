@@ -8,6 +8,8 @@ import {
 } from 'typeorm';
 import { RefreshToken } from './RefreshToken';
 import { PasswordReset } from './PasswordReset';
+import { Notification } from './Notification';
+import { NotificationPreferences } from './NotificationPreferences';
 
 @Entity('users')
 export class User {
@@ -65,6 +67,12 @@ export class User {
 
   @OneToMany(() => PasswordReset, (passwordReset) => passwordReset.user)
   passwordResets!: PasswordReset[];
+
+  @OneToMany(() => Notification, (notification) => notification.user)
+  notifications!: Notification[];
+
+  @OneToMany(() => NotificationPreferences, (preferences) => preferences.user)
+  notificationPreferences!: NotificationPreferences[];
 
   // Virtual fields
   get fullName(): string {
