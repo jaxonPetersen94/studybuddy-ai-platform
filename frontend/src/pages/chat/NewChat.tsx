@@ -16,7 +16,7 @@ import ChatInput from '../../components/chat/ChatInput';
 import SidebarComponent from '../../components/layout/Sidebar';
 import PillButton from '../../components/ui/PillButton';
 import SubjectCard from '../../components/ui/SubjectCard';
-import { useChatStore } from '../../stores/ChatStore';
+import { useChatStore } from '../../stores/chat/ChatStore';
 import { QuickAction, Subject } from '../../types/uiTypes';
 import SessionList from '../../components/chat/SessionList';
 
@@ -29,14 +29,14 @@ const NewChat: React.FC = () => {
     selectedAction,
     userText,
     isSending,
+    isSidebarOpen,
     loadSessions,
     setUserText,
     setSelectedSubject,
     setSelectedAction,
+    setSidebarOpen,
     createSessionAndSend,
   } = useChatStore();
-
-  const [sidebarOpen, setSidebarOpen] = React.useState(false);
 
   useEffect(() => {
     loadSessions();
@@ -207,8 +207,8 @@ const NewChat: React.FC = () => {
       {/* Sidebar */}
       <SidebarComponent
         title="Chat History"
-        isOpen={sidebarOpen}
-        onToggle={() => setSidebarOpen(!sidebarOpen)}
+        isOpen={isSidebarOpen}
+        onToggle={() => setSidebarOpen(!isSidebarOpen)}
         headerHeight={69}
       >
         <SessionList
@@ -219,9 +219,7 @@ const NewChat: React.FC = () => {
             setUserText('');
             setSidebarOpen(false);
           }}
-          onSessionClick={(sessionId) => {
-            navigate(`/chat/${sessionId}`);
-          }}
+          onSessionClick={handleSessionClick}
           newChatButtonEnabled={false}
         />
       </SidebarComponent>

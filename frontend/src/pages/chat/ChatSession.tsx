@@ -4,7 +4,7 @@ import { ArrowLeft } from 'lucide-react';
 import ChatBubble from '../../components/chat/ChatBubble';
 import ChatInput from '../../components/chat/ChatInput';
 import SidebarComponent from '../../components/layout/Sidebar';
-import { useChatStore } from '../../stores/ChatStore';
+import { useChatStore } from '../../stores/chat/ChatStore';
 import { formatTimestamp } from '../../utils/dateUtils';
 import SessionList from '../../components/chat/SessionList';
 
@@ -18,17 +18,17 @@ const ChatSession: React.FC = () => {
     sessions,
     userText,
     isSending,
+    isSidebarOpen,
     sendMessage,
     loadSession,
     loadSessions,
     setUserText,
+    setSidebarOpen,
     handleCopyMessage,
     handleLikeMessage,
     handleDislikeMessage,
     handleRegenerateMessage,
   } = useChatStore();
-
-  const [sidebarOpen, setSidebarOpen] = React.useState(false);
 
   // Load session when component mounts or sessionId changes
   useEffect(() => {
@@ -66,7 +66,6 @@ const ChatSession: React.FC = () => {
 
   const handleSessionClick = (sessionId: string) => {
     navigate(`/chat/${sessionId}`);
-    setSidebarOpen(false);
   };
 
   // Show loading state while session is loading
@@ -83,8 +82,8 @@ const ChatSession: React.FC = () => {
       {/* Sidebar */}
       <SidebarComponent
         title="Chat History"
-        isOpen={sidebarOpen}
-        onToggle={() => setSidebarOpen(!sidebarOpen)}
+        isOpen={isSidebarOpen}
+        onToggle={() => setSidebarOpen(!isSidebarOpen)}
         headerHeight={69}
       >
         <SessionList
