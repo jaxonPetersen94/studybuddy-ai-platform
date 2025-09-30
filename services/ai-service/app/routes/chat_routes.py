@@ -5,8 +5,8 @@ from typing import Optional
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, Response, UploadFile
 from fastapi.responses import StreamingResponse
 
-from app.core.auth import get_current_user
-from app.core.logging import get_logger
+from app.core.security import get_current_user
+from app.core.utils import get_logger
 from app.models.user import User
 from app.schemas.chat import (
     BulkDeleteRequest,
@@ -20,7 +20,7 @@ from app.schemas.chat import (
 )
 
 # Import our dependency injection types
-from app.core.dependencies import (
+from app.core.config import (
     AnalyticsServiceDep,
     AttachmentServiceDep,
     ChatServiceDep,

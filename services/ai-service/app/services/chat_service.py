@@ -3,7 +3,7 @@ import json
 from datetime import datetime
 from typing import AsyncGenerator, Dict, Any, Optional
 from app.core.config import get_settings
-from app.core.logging import get_logger
+from app.core.utils import get_logger
 from app.models.message import Message
 from app.models.session import Session
 from typing import Optional

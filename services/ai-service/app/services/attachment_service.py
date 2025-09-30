@@ -4,7 +4,7 @@ import os
 import hashlib
 import mimetypes
 from datetime import datetime, timezone
-from typing import Dict, List, Optional, Any, BinaryIO
+from typing import Dict, Optional, Any
 from pathlib import Path
 import aiofiles
 from fastapi import UploadFile, HTTPException
@@ -12,7 +12,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from bson import ObjectId
 from app.core.database import get_database
 from app.core.config import get_settings
-from app.core.logging import get_logger
+from app.core.utils import get_logger
 
 # Only safe imports - no heavy C extensions
 settings = get_settings()

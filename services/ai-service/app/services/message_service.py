@@ -6,7 +6,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo import ASCENDING, DESCENDING
 from bson import ObjectId
 from app.core.database import get_database
-from app.core.logging import get_logger
+from app.core.utils import get_logger
 from app.models.message import Message
 from app.models.session import Session
 

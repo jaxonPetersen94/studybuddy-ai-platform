@@ -1,8 +1,7 @@
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 from pydantic import BaseModel, Field, field_validator
-
-from app.core.mongodb import PyObjectId, MongoBaseConfig
+from app.core.database import PyObjectId, MongoBaseConfig
 
 
 class Session(BaseModel):

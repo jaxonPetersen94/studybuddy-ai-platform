@@ -2,10 +2,9 @@ import asyncio
 import json
 import litellm
 from datetime import datetime
-from typing import AsyncGenerator, Dict, Any, List, Optional, Union
+from typing import AsyncGenerator, Dict, Any, List, Optional
 from app.core.config import get_settings
-from app.core.logging import get_logger
-from app.core.exceptions import AIServiceError, ModelNotFoundError, RateLimitError
+from app.core.utils import get_logger, AIServiceError, RateLimitError
 
 settings = get_settings()
 logger = get_logger(__name__)

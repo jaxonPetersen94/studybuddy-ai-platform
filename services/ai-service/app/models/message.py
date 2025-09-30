@@ -2,8 +2,7 @@ from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field, field_validator
 from bson import ObjectId
-
-from app.core.mongodb import PyObjectId, MongoBaseConfig
+from app.core.database import PyObjectId, MongoBaseConfig
 
 
 class Message(BaseModel):
