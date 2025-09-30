@@ -110,33 +110,6 @@ const ChatSession: React.FC = () => {
 
       {/* Main Content Area - Centered */}
       <div className="flex-1 flex flex-col items-center">
-        {/* Chat Header */}
-        <div className="w-full border-b border-base-300/50 bg-base-100/80 backdrop-blur-sm">
-          <div className="max-w-4xl w-full mx-auto px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <button
-                  onClick={handleNewChat}
-                  className="btn btn-ghost btn-sm flex items-center space-x-2"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  <span>New Chat</span>
-                </button>
-                {currentSession && (
-                  <div className="hidden sm:block">
-                    <h1 className="font-semibold text-base-content truncate max-w-md">
-                      {currentSession.title}
-                    </h1>
-                    <p className="text-xs text-base-content/60">
-                      {formatTimestamp(currentSession.created_at)}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
         {/* Chat Messages */}
         <div className="flex-1 w-full overflow-y-auto flex justify-center">
           <div className="w-full max-w-4xl px-6">
