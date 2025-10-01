@@ -2,6 +2,8 @@ import { DataSource } from 'typeorm';
 import { User } from '../entities/User';
 import { RefreshToken } from '../entities/RefreshToken';
 import { PasswordReset } from '../entities/PasswordReset';
+import { Notification } from '../entities/Notification';
+import { NotificationPreferences } from '../entities/NotificationPreferences';
 
 const {
   DB_HOST,
@@ -28,7 +30,13 @@ export const AppDataSource = new DataSource({
   database,
   synchronize: false,
   logging: NODE_ENV === 'development' ? ['error', 'warn'] : false,
-  entities: [User, RefreshToken, PasswordReset],
+  entities: [
+    User,
+    RefreshToken,
+    PasswordReset,
+    Notification,
+    NotificationPreferences,
+  ],
   migrations: ['src/migrations/*.ts'],
   subscribers: ['src/subscribers/*.ts'],
 });
