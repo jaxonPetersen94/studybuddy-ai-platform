@@ -83,7 +83,7 @@ const NotificationsDropdown: React.FC = () => {
                     type={notification.type}
                     title={notification.title}
                     message={notification.message}
-                    timestamp={notification.timestamp}
+                    createdAt={notification.createdAt}
                     isRead={notification.isRead}
                     onMarkAsRead={markAsRead}
                     onDismiss={dismiss}

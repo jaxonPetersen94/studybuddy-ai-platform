@@ -1,15 +1,13 @@
 // Notification entity
 export interface Notification {
   id: string;
-  user_id: string;
+  userId: string;
   type: 'info' | 'success' | 'warning' | 'error';
   title: string;
   message: string;
-  created_at: string;
-  timestamp: Date; // Transformed from created_at
-  isRead: boolean; // Transformed from is_read
-  is_read: boolean; // Backend field
-  read_at?: string | null;
+  createdAt: string;
+  isRead: boolean;
+  readAt?: string | null;
   metadata?: NotificationMetadata;
 }
 
@@ -68,32 +66,32 @@ export interface GetNotificationsResponse {
 // Notification preferences
 export interface NotificationPreferences {
   id: string;
-  user_id: string;
-  email_enabled: boolean;
-  push_enabled: boolean;
-  in_app_enabled: boolean;
+  userId: string;
+  emailEnabled: boolean;
+  pushEnabled: boolean;
+  inAppEnabled: boolean;
 
   // Category-specific settings
-  chat_notifications: boolean;
-  study_notifications: boolean;
-  assignment_notifications: boolean;
-  quiz_notifications: boolean;
-  achievement_notifications: boolean;
-  reminder_notifications: boolean;
-  system_notifications: boolean;
-  social_notifications: boolean;
-  updates_notifications: boolean;
+  chatNotifications: boolean;
+  studyNotifications: boolean;
+  assignmentNotifications: boolean;
+  quizNotifications: boolean;
+  achievementNotifications: boolean;
+  reminderNotifications: boolean;
+  systemNotifications: boolean;
+  socialNotifications: boolean;
+  updatesNotifications: boolean;
 
   // Quiet hours
-  quiet_hours_enabled: boolean;
-  quiet_hours_start?: string; // HH:MM format
-  quiet_hours_end?: string; // HH:MM format
+  quietHoursEnabled: boolean;
+  quietHoursStart?: string; // HH:MM format
+  quietHoursEnd?: string; // HH:MM format
 
   // Frequency settings
-  digest_enabled: boolean;
-  digest_frequency?: 'daily' | 'weekly' | 'monthly';
-  digest_time?: string; // HH:MM format
+  digestEnabled: boolean;
+  digestFrequency?: 'daily' | 'weekly' | 'monthly';
+  digestTime?: string; // HH:MM format
 
-  created_at: string;
-  updated_at: string;
+  createdAt: string;
+  updatedAt: string;
 }

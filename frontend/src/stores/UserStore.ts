@@ -106,6 +106,7 @@ export const useUserStore = create<UserStore>()(
 
         try {
           const response = await authService.register(data);
+
           const tokens = tokenUtils.createTokens(
             response.tokens.accessToken,
             response.tokens.refreshToken,

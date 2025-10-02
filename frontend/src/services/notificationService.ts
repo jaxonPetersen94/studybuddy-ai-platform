@@ -30,8 +30,8 @@ export const notificationService = {
       // Transform timestamps to Date objects
       const notifications = response.data.notifications.map((notification) => ({
         ...notification,
-        timestamp: new Date(notification.created_at),
-        isRead: notification.is_read,
+        timestamp: new Date(notification.createdAt),
+        isRead: notification.isRead,
       }));
 
       return {
@@ -61,8 +61,7 @@ export const notificationService = {
 
       return {
         ...response.data,
-        timestamp: new Date(response.data.created_at),
-        isRead: response.data.is_read,
+        isRead: response.data.isRead,
       };
     } catch (error: any) {
       if (error.status === 404) {
@@ -97,8 +96,7 @@ export const notificationService = {
 
       return {
         ...response.data,
-        timestamp: new Date(response.data.created_at),
-        isRead: response.data.is_read,
+        isRead: response.data.isRead,
       };
     } catch (error: any) {
       if (error.status === 404) {
@@ -356,8 +354,7 @@ export const notificationService = {
 
       return {
         ...response.data,
-        timestamp: new Date(response.data.created_at),
-        isRead: response.data.is_read,
+        isRead: response.data.isRead,
       };
     } catch (error: any) {
       const apiError: ApiError = {

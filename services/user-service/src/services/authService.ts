@@ -14,6 +14,7 @@ import {
   UserProfileUpdateData,
   AuthErrorCodes,
 } from '../types';
+import { notificationService } from './notificationService';
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET!;
@@ -209,7 +210,11 @@ class AuthService {
       lastLoginAt: new Date(),
     });
 
-    return await this.userRepository.save(newUser);
+    const savedUser = await this.userRepository.save(newUser);
+
+    await notificationService.createWelcomeNotification(savedUser.id);
+
+    return savedUser;
   }
 
   /**
