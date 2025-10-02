@@ -7,8 +7,11 @@ An intelligent learning assistant platform that helps students learn more effect
 ![StudyBuddy AI Login](screenshots/auth-form.png)
 _Clean and intuitive authentication interface with login and registration functionality_
 
-![StudyBuddy AI Landing Page](screenshots/new-chat.png)
-_Main landing page featuring subject selection cards and quick action prompts for starting learning sessions_
+![StudyBuddy AI Dashboard](screenshots/dashboard.png)
+_Main dashboard featuring study method selection cards including flashcards, quizzes, chat, presentations, and podcasts_
+
+![StudyBuddy AI Chat Interface](screenshots/new-chat.png)
+_Chat interface with AI assistant, featuring multi-modal input options and chat history sidebar_
 
 ![StudyBuddy AI Chat Session](screenshots/chat-session.png)
 _Active chat session showing AI-powered responses with conversation history in the sidebar_
@@ -107,7 +110,7 @@ docker-compose up -d
 
 This will start:
 
-- Frontend at `http://localhost:3000` (Main StudyBuddy interface)
+- Frontend at `http://localhost:3000`
 - API Gateway at `http://localhost:3001`
 - User Service at `http://localhost:5001`
 - AI Service at `http://localhost:5002` (Python FastAPI)
@@ -167,7 +170,7 @@ This will start:
    npm run dev
    ```
 
-   The main application will be available at `http://localhost:3000` with the NewChat interface as the landing page.
+   The main application will be available at `http://localhost:3000` with either the Login/Register page or the Dashboard as the landing page.
 
 ### Environment Setup
 
@@ -229,13 +232,25 @@ The project includes development database management tools:
 
 ### User Interface Features
 
-The NewChat component serves as the main interaction hub:
+The application flow centers around the Dashboard landing page:
 
-- **Subject Selection**: Click on programming, math, science, languages, writing, or business cards to focus your learning session
-- **Quick Actions**: Use pre-built prompts for common learning tasks like explanations, quizzes, and study guides
+**Dashboard (Landing Page)**
+
+- **Study Method Selection**: Choose from five learning methods:
+  - **Flash Cards**: Interactive memorization cards
+  - **Quiz**: Test your knowledge with generated questions
+  - **Chat**: AI-powered conversational learning assistant
+  - **Presentation**: Visual learning slides
+  - **Podcast**: Audio learning experience
+- **Personalized Learning**: Each method creates content tailored to your learning style
+- **Responsive Design**: Grid layout adapts from mobile to desktop
+
+**Chat Interface (via Dashboard → Chat button)**
+
 - **Multi-Modal Input**: Support for text, file uploads, voice input, and camera integration
-- **Chat History**: Access previous learning sessions through the sidebar with timestamps and starred conversations
-- **Responsive Design**: Optimized for desktop and mobile learning experiences
+- **Session Management**: Chat history accessible through the sidebar with timestamps
+- **Real-time AI Responses**: Streaming responses from AI service
+- **Quick Start**: Create new chat sessions or continue existing conversations
 
 ### Deployment Modes
 
@@ -320,8 +335,7 @@ poetry run pytest
 
 - [x] Basic project structure
 - [x] Frontend setup with React + TypeScript
-- [x] Interactive NewChat landing page with subject selection
-- [x] Quick action prompts for learning tasks
+- [x] Dashboard landing page with study method selection
 - [x] Chat interface with multi-modal input support
 - [x] Sidebar with chat history management
 - [x] API Gateway implementation
@@ -335,15 +349,16 @@ poetry run pytest
 - [x] Real-time streaming AI responses
 - [x] Frontend-backend WebSocket/streaming communication
 - [ ] Google Gemini API integration
-- [ ] Context-aware responses based on selected subjects
+- [ ] Context-aware responses based on selected study methods
 - [ ] File upload processing for documents and images
 - [ ] Voice input transcription and processing
 
 ### Phase 3: Enhanced Learning Tools 📅
 
-- [ ] Advanced study guide generation with structured content
 - [ ] Interactive flashcard system with spaced repetition
-- [ ] Adaptive quiz generation based on performance
+- [ ] Adaptive quiz generation with multiple question types
+- [ ] Presentation generator with visual slides
+- [ ] Podcast creator with text-to-speech integration
 - [ ] Progress tracking and learning analytics
 - [ ] Personalized learning path recommendations
 
@@ -354,16 +369,18 @@ poetry run pytest
 - [ ] Advanced document processing and content extraction
 - [ ] Real-time notifications and reminders
 - [ ] Performance optimization and caching
+- [ ] Cross-method learning integration
 
 ## 🎯 Project Goals
 
 This project demonstrates:
 
-- **Modern Learning Interface**: Intuitive subject-based navigation with AI-powered quick actions
+- **Comprehensive Learning Platform**: Multi-method approach to personalized education
+- **Modern Dashboard Interface**: Clean, intuitive study method selection with clear navigation
 - **Full-Stack Development**: React frontend with comprehensive backend microservices
 - **Production-Ready Architecture**: Complete Docker containerization with health checks
 - **Microservices Design**: Proper service separation with API Gateway pattern
-- **Educational Technology**: Practical application of AI for personalized learning experiences
+- **Educational Technology**: Practical application of AI for diverse learning experiences
 - **Multi-Language Backend**: Node.js services with Python AI processing
 - **User Experience Focus**: Multi-modal input support and responsive design
 - **Database Architecture**: Multi-database setup with service isolation
