@@ -14,6 +14,7 @@ import UserSettings from './pages/user/UserSettings';
 import { useUserStore } from './stores/UserStore';
 import { useToastStore } from './stores/ToastStore';
 import { ToastContainer } from './components/ui/Toast';
+import Dashboard from './pages/dashboard/Dashboard';
 
 const HomeRoute = () => {
   const { isAuthenticated } = useUserStore();
@@ -21,7 +22,7 @@ const HomeRoute = () => {
   useOAuthHandler();
 
   return isAuthenticated ? (
-    <Navigate to="/new" replace />
+    <Navigate to="/dashboard" replace />
   ) : (
     <Navigate to="/auth" replace />
   );
@@ -49,6 +50,16 @@ function App() {
           <Route path="/auth" element={<AuthForm />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password/:token" element={<ResetPassword />} />
+
+          {/* Dashboard - landing page after login */}
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
 
           {/* New chat creation page */}
           <Route
@@ -81,7 +92,7 @@ function App() {
           />
 
           {/* Catch all route */}
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<ErrorBoundary />} />
         </Routes>
       </div>
 
