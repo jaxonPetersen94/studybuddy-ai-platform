@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   FileText,
@@ -7,7 +7,6 @@ import {
   Radio,
   SquareStack,
 } from 'lucide-react';
-import { useChatStore } from '../../stores/chat/ChatStore';
 import StudyMethodCard from '../../components/dashboard/StudyMethodCard';
 
 interface StudyMethod {
@@ -20,11 +19,6 @@ interface StudyMethod {
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
-  const { loadSessions } = useChatStore();
-
-  useEffect(() => {
-    loadSessions();
-  }, []);
 
   // Study methods
   const studyMethods: StudyMethod[] = [
