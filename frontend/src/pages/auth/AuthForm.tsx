@@ -12,6 +12,7 @@ import {
   User,
 } from 'lucide-react';
 import { useUserStore } from '../../stores/UserStore';
+import { useToastStore } from '../../stores/ToastStore';
 import TerminalCard from '../../components/ui/TerminalCard';
 import AuthHeader from '../../components/auth/AuthHeader';
 import {
@@ -38,6 +39,7 @@ const AuthForm: React.FC = () => {
 
   const { login, register, isLoading, error, clearError, handleOAuthSuccess } =
     useUserStore();
+  const { error: showErrorToast } = useToastStore();
 
   // Handle OAuth success callback
   useEffect(() => {
@@ -49,9 +51,14 @@ const AuthForm: React.FC = () => {
       handleOAuthSuccess(token);
       navigate('/dashboard');
     } else if (oauthError) {
-      console.error('OAuth error:', oauthError);
+      showErrorToast('OAuth authentication failed. Please try again.', {
+        title: 'Authentication Error',
+        duration: 5000,
+      });
+      // Clean up the URL
+      navigate('/auth', { replace: true });
     }
-  }, [location, handleOAuthSuccess, navigate]);
+  }, [location, handleOAuthSuccess, navigate, showErrorToast]);
 
   const handleSubmit = async () => {
     clearError();

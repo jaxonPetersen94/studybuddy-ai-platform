@@ -104,7 +104,7 @@ router.get(
 router.get(
   '/auth/google/callback',
   passport.authenticate('google', {
-    failureRedirect: `${process.env.FRONTEND_URL}/login?error=oauth_failed`,
+    failureRedirect: `${process.env.FRONTEND_URL}/auth?error=oauth_failed`,
   }),
   asyncHandler(handleOAuthSuccess),
 );
@@ -115,7 +115,7 @@ router.get(
 router.get(
   '/auth/github/callback',
   passport.authenticate('github', {
-    failureRedirect: `${process.env.FRONTEND_URL}/login?error=oauth_failed`,
+    failureRedirect: `${process.env.FRONTEND_URL}/auth?error=oauth_failed`,
   }),
   asyncHandler(handleOAuthSuccess),
 );

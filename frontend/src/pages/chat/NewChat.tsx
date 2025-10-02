@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { GraduationCap } from 'lucide-react';
 import ChatInput from '../../components/chat/ChatInput';
 import SidebarComponent from '../../components/layout/Sidebar';
 import { useChatStore } from '../../stores/chat/ChatStore';
@@ -70,10 +71,15 @@ const NewChat: React.FC = () => {
       </SidebarComponent>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col justify-center items-center py-12">
+      <div className="flex-1 flex flex-col justify-center items-center py-12 -mt-20">
         <div className="max-w-4xl w-full px-6">
           {/* Header */}
           <div className="text-center mb-10">
+            {/* Logo */}
+            <div className="flex justify-center mb-4">
+              <GraduationCap className="w-16 h-16 text-primary" />
+            </div>
+
             <h1 className="text-3xl lg:text-4xl font-bold text-base-content mb-3 tracking-tight">
               Chat with{' '}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">
