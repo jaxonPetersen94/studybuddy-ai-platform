@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Calendar, Upload, Globe } from 'lucide-react';
+import { User, Calendar, Globe, Camera, ChevronUp } from 'lucide-react';
 import { User as UserType } from '../../types/userTypes';
 
 interface UserProfileSettingsProps {
@@ -146,18 +146,15 @@ const UserProfileSettings: React.FC<UserProfileSettingsProps> = ({
         <div className="card-body p-6">
           <div className="flex flex-col md:flex-row items-start md:items-center space-y-4 md:space-y-0 md:space-x-6">
             {/* Avatar Section */}
-            <div className="flex flex-col items-center space-y-3">
-              <div className="relative group">
-                <div className="w-20 h-20 bg-gradient-to-br from-primary to-secondary rounded-box flex items-center justify-center text-2xl font-bold text-primary-content shadow-lg select-none">
-                  {localProfile.avatar || user.avatar || getInitials()}
-                </div>
-              </div>
+            <div className="flex flex-col items-center">
               <button
                 onClick={handleAvatarUpload}
-                className="btn btn-xs font-mono bg-base-300/50 border-base-300/50 text-base-content/60 hover:bg-primary/10 hover:border-primary/30 hover:text-primary transition-all duration-200"
+                className="relative group w-20 h-20 bg-gradient-to-br from-primary to-secondary rounded-box flex items-center justify-center text-2xl font-bold text-primary-content shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 cursor-pointer"
               >
-                <Upload className="w-3 h-3" />
-                CHANGE_AVATAR
+                {localProfile.avatar || user.avatar || getInitials()}
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 rounded-box transition-all duration-200 flex items-center justify-center">
+                  <Camera className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+                </div>
               </button>
             </div>
 
@@ -167,20 +164,6 @@ const UserProfileSettings: React.FC<UserProfileSettingsProps> = ({
                 <h3 className="text-xl font-bold text-base-content">
                   {getDisplayName()}
                 </h3>
-                <div
-                  className={`badge ${getLearningLevelColor(
-                    localProfile.learningLevel ||
-                      user.learningLevel ||
-                      'beginner',
-                  )} font-mono text-xs mt-2 md:mt-0`}
-                >
-                  {(
-                    localProfile.learningLevel ||
-                    user.learningLevel ||
-                    'beginner'
-                  ).toUpperCase()}
-                  _LEARNER
-                </div>
               </div>
 
               <p className="text-base-content/60 font-mono text-sm mb-2">
@@ -203,6 +186,29 @@ const UserProfileSettings: React.FC<UserProfileSettingsProps> = ({
                     <span>{localProfile.location || user.location}</span>
                   </div>
                 )}
+              </div>
+            </div>
+
+            {/* Learning Level Badge with Chevron - Right Aligned */}
+            <div className="flex flex-col items-center justify-between self-stretch">
+              <ChevronUp
+                size={48}
+                className="text-yellow-500 flex-shrink-0"
+                strokeWidth={2.5}
+              />
+              <div
+                className={`badge ${getLearningLevelColor(
+                  localProfile.learningLevel ||
+                    user.learningLevel ||
+                    'beginner',
+                )} font-mono text-xs`}
+              >
+                {(
+                  localProfile.learningLevel ||
+                  user.learningLevel ||
+                  'beginner'
+                ).toUpperCase()}
+                _LEARNER
               </div>
             </div>
           </div>
