@@ -5,11 +5,13 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   OneToMany,
+  OneToOne,
 } from 'typeorm';
 import { RefreshToken } from './RefreshToken';
 import { PasswordReset } from './PasswordReset';
 import { Notification } from './Notification';
 import { NotificationPreferences } from './NotificationPreferences';
+import { UserPreferences } from './UserPreferences';
 
 @Entity('users')
 export class User {
@@ -73,6 +75,9 @@ export class User {
 
   @OneToMany(() => NotificationPreferences, (preferences) => preferences.user)
   notificationPreferences!: NotificationPreferences[];
+
+  @OneToOne(() => UserPreferences, (preferences) => preferences.user)
+  preferences?: UserPreferences;
 
   // Virtual fields
   get fullName(): string {

@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware';
 import { authService } from '../services/authService';
 import { tokenUtils } from '../utils/tokens';
 import type { AuthTokens, LoginData, RegisterData } from '../types/authTypes';
-import { User } from '../types/userTypes';
+import { User, UserPreferences } from '../types/userTypes';
 import { jwtDecode } from 'jwt-decode';
 
 interface UserStore {
@@ -32,6 +32,8 @@ interface UserStore {
     currentPassword: string,
     newPassword: string,
   ) => Promise<void>;
+  loadUserPreferences: () => Promise<void>;
+  updatePreferences: (data: Partial<UserPreferences>) => Promise<void>;
 
   // State management utilities
   setLoading: (loading: boolean) => void;
@@ -73,6 +75,8 @@ export const useUserStore = create<UserStore>()(
             isAuthenticated: true,
             isLoading: false,
           });
+
+          await get().loadUserPreferences();
 
           // Determine message based on firstLogin property
           const message = response.user.firstLogin
@@ -158,6 +162,10 @@ export const useUserStore = create<UserStore>()(
           const toastStore = useToastStore.getState();
           toastStore.clearAll();
 
+          // Reset theme to 'auto' on logout
+          const { useThemeStore } = await import('../stores/ThemeStore');
+          useThemeStore.getState().setThemeMode('auto');
+
           // Show logout success toast
           toastStore.info('You have been logged out successfully', {
             title: 'Logged Out',
@@ -196,6 +204,7 @@ export const useUserStore = create<UserStore>()(
           // Update user data if provided in refresh response
           if (response.user) {
             set({ user: response.user });
+            await get().loadUserPreferences();
           }
         } catch (error) {
           // Show session expired toast
@@ -235,6 +244,8 @@ export const useUserStore = create<UserStore>()(
             isAuthenticated: true,
             isLoading: false,
           });
+
+          if (!isFirstLogin) await get().loadUserPreferences();
 
           // Use isFirstLogin from JWT token instead of user object
           const message = isFirstLogin
@@ -330,6 +341,79 @@ export const useUserStore = create<UserStore>()(
           useToastStore
             .getState()
             .error(errorMessage, { title: 'Password Change Failed' });
+          throw error;
+        }
+      },
+
+      loadUserPreferences: async () => {
+        const { tokens, user } = get();
+        if (!tokens?.accessToken) return;
+
+        try {
+          const preferences = await authService.getUserPreferences(
+            tokens.accessToken,
+          );
+
+          if (user) {
+            set({ user: { ...user, preferences } });
+          }
+
+          // Sync to ThemeStore
+          if (preferences?.appearance?.themeMode) {
+            const { useThemeStore } = await import('../stores/ThemeStore');
+            useThemeStore
+              .getState()
+              .setThemeMode(preferences.appearance.themeMode);
+          }
+        } catch (error) {
+          console.error('Failed to load user preferences:', error);
+        }
+      },
+
+      updatePreferences: async (data: Partial<UserPreferences>) => {
+        const { tokens, user } = get();
+        if (!tokens?.accessToken) throw new Error('Not authenticated');
+
+        set({ isLoading: true, error: null });
+
+        try {
+          const updatedPreferences = await authService.updateUserPreferences(
+            data,
+            tokens.accessToken,
+          );
+
+          // Update user object with new preferences
+          if (user) {
+            set({
+              user: { ...user, preferences: updatedPreferences },
+              isLoading: false,
+            });
+          } else {
+            set({ isLoading: false });
+          }
+
+          // Show preferences update success toast
+          const { useToastStore } = await import('../stores/ToastStore');
+          useToastStore
+            .getState()
+            .success('Your preferences have been updated successfully', {
+              title: 'Preferences Updated',
+            });
+        } catch (error) {
+          const errorMessage =
+            error instanceof Error
+              ? error.message
+              : 'Preferences update failed';
+          set({
+            error: errorMessage,
+            isLoading: false,
+          });
+
+          // Show preferences update error toast
+          const { useToastStore } = await import('../stores/ToastStore');
+          useToastStore
+            .getState()
+            .error(errorMessage, { title: 'Preferences Update Failed' });
           throw error;
         }
       },

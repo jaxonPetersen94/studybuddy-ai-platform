@@ -58,8 +58,14 @@ router.post('/reset-password', (req, res) =>
 router.get('/profile', (req, res) =>
   forwardRequest(req, res, '/profile', 'GET'),
 );
-router.put('/profile', (req, res) =>
-  forwardRequest(req, res, '/profile', 'PUT'),
+router.get('/preferences', (req, res) =>
+  forwardRequest(req, res, '/preferences', 'GET'),
+);
+router.patch('/profile', (req, res) =>
+  forwardRequest(req, res, '/profile', 'PATCH'),
+);
+router.patch('/preferences', (req, res) =>
+  forwardRequest(req, res, '/preferences', 'PATCH'),
 );
 router.delete('/profile', (req, res) =>
   forwardRequest(req, res, '/profile', 'DELETE'),

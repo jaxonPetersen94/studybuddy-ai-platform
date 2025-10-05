@@ -6,16 +6,8 @@ export interface AppearancePreferences {
   themeMode?: ThemeMode;
 }
 
-export interface DataPreferences {
-  analyticsEnabled: boolean;
-  dataExportFormat: 'json' | 'csv' | 'pdf';
-  autoBackup: boolean;
-  backupFrequency: 'daily' | 'weekly' | 'monthly';
-}
-
 export interface UserPreferences {
   appearance?: Partial<AppearancePreferences>;
-  data?: Partial<DataPreferences>;
   timezone?: string;
 }
 
@@ -66,5 +58,3 @@ export type UserBasicInfo = Pick<
   User,
   'id' | 'email' | 'firstName' | 'lastName' | 'avatar' | 'role'
 >;
-
-export type UserDataSettings = DataPreferences;

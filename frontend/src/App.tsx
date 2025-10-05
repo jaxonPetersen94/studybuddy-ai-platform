@@ -13,6 +13,7 @@ import ChatSession from './pages/chat/ChatSession';
 import UserSettings from './pages/user/UserSettings';
 import { useUserStore } from './stores/UserStore';
 import { useToastStore } from './stores/ToastStore';
+import { useThemeStore } from './stores/ThemeStore';
 import { ToastContainer } from './components/ui/Toast';
 import Dashboard from './pages/dashboard/Dashboard';
 
@@ -31,19 +32,18 @@ const HomeRoute = () => {
 function App() {
   const { isAuthenticated } = useUserStore();
   const { toasts } = useToastStore();
+  const currentTheme = useThemeStore((state) => state.currentTheme);
 
   return (
-    <div className="App relative min-h-screen" data-theme="StudyBuddy-Dark">
+    <div className="App relative min-h-screen" data-theme={currentTheme}>
       <Background />
 
-      {/* Header */}
       {isAuthenticated && (
         <div className="relative z-50">
           <Header />
         </div>
       )}
 
-      {/* Main content */}
       <div className="relative z-10">
         <Routes>
           <Route path="/" element={<HomeRoute />} />
@@ -51,7 +51,6 @@ function App() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password/:token" element={<ResetPassword />} />
 
-          {/* Dashboard - landing page after login */}
           <Route
             path="/dashboard"
             element={
@@ -61,7 +60,6 @@ function App() {
             }
           />
 
-          {/* New chat creation page */}
           <Route
             path="/new"
             element={
@@ -71,7 +69,6 @@ function App() {
             }
           />
 
-          {/* Individual chat sessions */}
           <Route
             path="/chat/:sessionId"
             element={
@@ -81,7 +78,6 @@ function App() {
             }
           />
 
-          {/* User settings */}
           <Route
             path="/user-settings"
             element={
@@ -91,7 +87,6 @@ function App() {
             }
           />
 
-          {/* Catch all route */}
           <Route path="*" element={<ErrorBoundary />} />
         </Routes>
       </div>

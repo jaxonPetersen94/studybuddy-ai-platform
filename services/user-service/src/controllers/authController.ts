@@ -10,6 +10,7 @@ import {
 } from '../types';
 import { asyncHandler } from '../utils/asyncHandler';
 import { validateEmail, validatePassword } from '../utils/validationHandler';
+import { UserPreferences } from '../entities/UserPreferences';
 
 /**
  * POST /register
@@ -317,7 +318,7 @@ export const getProfile = asyncHandler(async (req: Request, res: Response) => {
 });
 
 /**
- * PUT /profile
+ * PATCH /profile
  */
 export const updateProfile = asyncHandler(
   async (req: Request, res: Response) => {
@@ -414,5 +415,67 @@ export const deleteProfile = asyncHandler(
 
     await authService.deactivateAccount(req.user.id);
     res.json({ message: 'Account has been deactivated successfully' });
+  },
+);
+
+/**
+ * GET /preferences
+ */
+export const getPreferences = asyncHandler(
+  async (req: Request, res: Response) => {
+    if (!req.user) {
+      throw {
+        message: 'Authentication required',
+        code: AuthErrorCodes.UNAUTHORIZED,
+        statusCode: 401,
+      };
+    }
+
+    const preferences = await authService.getUserPreferences(req.user.id);
+    res.json(preferences);
+  },
+);
+
+/**
+ * PATCH /preferences
+ */
+export const updatePreferences = asyncHandler(
+  async (req: Request, res: Response) => {
+    if (!req.user) {
+      throw {
+        message: 'Authentication required',
+        code: AuthErrorCodes.UNAUTHORIZED,
+        statusCode: 401,
+      };
+    }
+
+    const { appearance, timezone, location, learningLevel, bio, studyGoal } =
+      req.body;
+
+    const updateData: Partial<UserPreferences> = {};
+    if (appearance !== undefined) updateData.appearance = appearance;
+    if (timezone !== undefined) updateData.timezone = timezone;
+    if (location !== undefined) updateData.location = location;
+    if (learningLevel !== undefined) updateData.learningLevel = learningLevel;
+    if (bio !== undefined) updateData.bio = bio;
+    if (studyGoal !== undefined) updateData.studyGoal = studyGoal;
+
+    if (Object.keys(updateData).length === 0) {
+      throw {
+        message: 'No valid fields to update',
+        code: AuthErrorCodes.NO_UPDATE_FIELDS,
+        statusCode: 400,
+      };
+    }
+
+    const updatedPreferences = await authService.updateUserPreferences(
+      req.user.id,
+      updateData,
+    );
+
+    res.json({
+      message: 'Preferences updated successfully',
+      preferences: updatedPreferences,
+    });
   },
 );

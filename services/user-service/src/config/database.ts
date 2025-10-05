@@ -4,6 +4,7 @@ import { RefreshToken } from '../entities/RefreshToken';
 import { PasswordReset } from '../entities/PasswordReset';
 import { Notification } from '../entities/Notification';
 import { NotificationPreferences } from '../entities/NotificationPreferences';
+import { UserPreferences } from '../entities/UserPreferences';
 
 const {
   DB_HOST,
@@ -36,6 +37,7 @@ export const AppDataSource = new DataSource({
     PasswordReset,
     Notification,
     NotificationPreferences,
+    UserPreferences,
   ],
   migrations: ['src/migrations/*.ts'],
   subscribers: ['src/subscribers/*.ts'],

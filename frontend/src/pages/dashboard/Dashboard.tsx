@@ -60,8 +60,6 @@ const Dashboard: React.FC = () => {
   ];
 
   const handleStudyMethodClick = (methodId: string) => {
-    console.log('Selected method:', methodId);
-
     if (methodId === 'chat') {
       navigate('/new');
     }

@@ -17,6 +17,7 @@ import { PasswordState } from '../../types/authTypes';
 import {
   AppearancePreferences,
   ThemeMode,
+  UserPreferences,
   User as UserProfile,
 } from '../../types/userTypes';
 
@@ -29,6 +30,7 @@ const UserSettings: React.FC = () => {
     updateProfile,
     changePassword,
     isLoading: userStoreLoading,
+    updatePreferences,
   } = useUserStore();
 
   const { themeMode, setThemeMode } = useThemeStore();
@@ -181,15 +183,13 @@ const UserSettings: React.FC = () => {
     settings: AppearancePreferences,
   ): Promise<void> => {
     try {
-      // Update the user profile with new appearance settings
-      const updatedProfile: Partial<UserProfile> = {
-        preferences: {
-          ...user?.preferences,
-          appearance: settings,
-        },
+      // Update the user preferences with new appearance settings
+      const updatedPreferences: Partial<UserPreferences> = {
+        ...user?.preferences,
+        appearance: settings,
       };
 
-      await updateProfile(updatedProfile);
+      await updatePreferences(updatedPreferences);
     } catch (error) {
       console.error('Failed to save appearance settings:', error);
       throw error;
@@ -225,9 +225,7 @@ const UserSettings: React.FC = () => {
       case 'appearance':
         return (
           <UserAppearanceSettings
-            isLoading={userStoreLoading}
             currentThemeMode={getCurrentThemeMode()}
-            userAppearanceSettings={user?.preferences?.appearance}
             onThemeChange={handleThemeChange}
           />
         );

@@ -3,12 +3,14 @@ import passport from 'passport';
 import {
   deleteProfile,
   forgotPassword,
+  getPreferences,
   getProfile,
   handleOAuthSuccess,
   login,
   logout,
   register,
   resetPassword,
+  updatePreferences,
   updateProfile,
 } from '../controllers/authController';
 import {
@@ -36,11 +38,13 @@ router.post('/login', asyncHandler(login));
 router.post('/forgot-password', asyncHandler(forgotPassword));
 router.post('/reset-password', asyncHandler(resetPassword));
 
-// Protected routes
+// Protected routes - Profile & Preferences
 router.post('/logout', authenticate, asyncHandler(logout));
 router.get('/profile', authenticate, asyncHandler(getProfile));
-router.put('/profile', authenticate, asyncHandler(updateProfile));
+router.patch('/profile', authenticate, asyncHandler(updateProfile));
 router.delete('/profile', authenticate, asyncHandler(deleteProfile));
+router.get('/preferences', authenticate, asyncHandler(getPreferences));
+router.patch('/preferences', authenticate, asyncHandler(updatePreferences));
 
 // Notification routes (protected)
 router.get('/notifications', authenticate, asyncHandler(getNotifications));

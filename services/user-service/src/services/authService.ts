@@ -15,6 +15,7 @@ import {
   AuthErrorCodes,
 } from '../types';
 import { notificationService } from './notificationService';
+import { UserPreferences } from '../entities/UserPreferences';
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET!;
@@ -25,6 +26,8 @@ class AuthService {
   private userRepository = AppDataSource.getRepository(User);
   private refreshTokenRepository = AppDataSource.getRepository(RefreshToken);
   private passwordResetRepository = AppDataSource.getRepository(PasswordReset);
+  private userPreferencesRepository =
+    AppDataSource.getRepository(UserPreferences);
 
   /**
    * Register a new user
@@ -707,6 +710,77 @@ class AuthService {
       .delete()
       .where('expiresAt < :now', { now })
       .execute();
+  }
+
+  /**
+   * Get user preferences by ID
+   */
+  async getUserPreferences(userId: string): Promise<any> {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      relations: ['preferences'],
+    });
+
+    if (!user) {
+      const error = new Error('User not found') as any;
+      error.code = AuthErrorCodes.USER_NOT_FOUND;
+      error.statusCode = 404;
+      throw error;
+    }
+
+    // If no preferences exist, return default structure
+    if (!user.preferences) {
+      return {
+        appearance: null,
+        data: null,
+        timezone: null,
+        location: null,
+        learningLevel: null,
+        bio: null,
+        studyGoal: null,
+      };
+    }
+
+    return user.preferences;
+  }
+
+  /**
+   * Update user preferences
+   */
+  async updateUserPreferences(
+    userId: string,
+    updateData: Partial<UserPreferences>,
+  ): Promise<UserPreferences> {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      relations: ['preferences'],
+    });
+
+    if (!user) {
+      const error = new Error('User not found') as any;
+      error.code = AuthErrorCodes.USER_NOT_FOUND;
+      error.statusCode = 404;
+      throw error;
+    }
+
+    let preferences: UserPreferences;
+
+    // If preferences don't exist, create them
+    if (!user.preferences) {
+      preferences = this.userPreferencesRepository.create({
+        userId: user.id,
+        ...updateData,
+      });
+    } else {
+      // Update existing preferences
+      preferences = user.preferences;
+      Object.assign(preferences, updateData);
+      preferences.updatedAt = new Date();
+    }
+
+    const savedPreferences: UserPreferences =
+      await this.userPreferencesRepository.save(preferences);
+    return savedPreferences;
   }
 }
 

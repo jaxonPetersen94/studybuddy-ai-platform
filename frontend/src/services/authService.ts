@@ -133,10 +133,6 @@ export const authService = {
     return apiClient.delete(API_ENDPOINTS.AUTH.DELETE_ACCOUNT, token);
   },
 
-  /**
-   * Get user preferences (timezone, communication settings, etc.)
-   * Important for StudyBuddy to respect user timezone and notification preferences
-   */
   async getUserPreferences(token: string): Promise<UserPreferences> {
     return apiClient.get<UserPreferences>(
       API_ENDPOINTS.USER.PREFERENCES,
@@ -144,10 +140,6 @@ export const authService = {
     );
   },
 
-  /**
-   * Update user preferences
-   * Critical for StudyBuddy: notification timing, timezone for scheduling, etc.
-   */
   async updateUserPreferences(
     data: Partial<UserPreferences>,
     token: string,
@@ -155,6 +147,7 @@ export const authService = {
     return apiClient.patch<UserPreferences>(
       API_ENDPOINTS.USER.PREFERENCES,
       data,
+      token,
     );
   },
 };
