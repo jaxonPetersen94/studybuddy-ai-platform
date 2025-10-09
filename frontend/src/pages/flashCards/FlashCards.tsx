@@ -11,7 +11,7 @@ const FlashCards = () => {
   };
 
   return (
-    <div className="min-h-[calc(100vh-69px)] flex items-center justify-center p-6">
+    <div className="min-h-[calc(100vh-69px)] flex items-center justify-center p-6 select-none">
       {/* Centered Flash Card */}
       <div className="w-full max-w-2xl">
         <div className="relative bg-base-200 rounded-box shadow-2xl p-8 md:p-12 border border-base-300">
@@ -36,16 +36,16 @@ const FlashCards = () => {
           <div className="relative z-10">
             {/* Icon Header */}
             <div className="flex justify-center mb-4">
-              <SquareStack className="w-16 h-16 text-primary" />
+              <SquareStack className="w-16 h-16 text-secondary" />
             </div>
 
             {/* Title */}
-            <h1 className="text-3xl lg:text-4xl font-bold text-center text-base-content mb-3 tracking-tight">
+            <h1 className="text-3xl lg:text-4xl font-bold text-center text-base-content mb-3 tracking-tight select-text">
               Create Your Flash Cards
             </h1>
 
             {/* Description */}
-            <p className="text-base text-center text-base-content/70 mb-8 max-w-2xl mx-auto">
+            <p className="text-base text-center text-base-content/70 mb-8 max-w-2xl mx-auto select-text">
               Describe what you'd like to study and we'll generate personalized
               flashcards powered by AI. Perfect for memorization and quick
               review sessions.

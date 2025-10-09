@@ -1,10 +1,10 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  Clapperboard,
   FileText,
   MessageSquare,
-  Presentation,
-  Radio,
+  Podcast,
   SquareStack,
 } from 'lucide-react';
 import StudyMethodCard from '../../components/dashboard/StudyMethodCard';
@@ -26,34 +26,34 @@ const Dashboard: React.FC = () => {
       id: 'flashcards',
       name: 'Flash Cards',
       icon: <SquareStack className="w-8 h-8" />,
-      color: 'text-primary',
+      color: 'text-secondary',
       description: 'Interactive memorization cards',
     },
     {
       id: 'quiz',
       name: 'Quiz',
       icon: <FileText className="w-8 h-8" />,
-      color: 'text-secondary',
+      color: 'text-primary',
       description: 'Test your knowledge',
     },
     {
       id: 'chat',
       name: 'Chat',
       icon: <MessageSquare className="w-8 h-8" />,
-      color: 'text-accent',
+      color: 'text-warning',
       description: 'Interactive conversation',
     },
     {
       id: 'presentation',
       name: 'Presentation',
-      icon: <Presentation className="w-8 h-8" />,
-      color: 'text-info',
+      icon: <Clapperboard className="w-8 h-8" />,
+      color: 'text-error',
       description: 'Visual learning slides',
     },
     {
       id: 'podcast',
       name: 'Podcast',
-      icon: <Radio className="w-8 h-8" />,
+      icon: <Podcast className="w-8 h-8" />,
       color: 'text-success',
       description: 'Audio learning experience',
     },

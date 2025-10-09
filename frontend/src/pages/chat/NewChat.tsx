@@ -77,7 +77,7 @@ const NewChat: React.FC = () => {
           <div className="text-center mb-10">
             {/* Logo */}
             <div className="flex justify-center mb-4">
-              <MessageSquare className="w-16 h-16 text-accent" />
+              <MessageSquare className="w-16 h-16 text-warning" />
             </div>
 
             <h1 className="text-3xl lg:text-4xl font-bold text-base-content mb-3 tracking-tight">

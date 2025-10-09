@@ -193,7 +193,7 @@ const UserProfileSettings: React.FC<UserProfileSettingsProps> = ({
             <div className="flex flex-col items-center justify-between self-stretch">
               <ChevronUp
                 size={48}
-                className="text-yellow-500 flex-shrink-0"
+                className="text-warning flex-shrink-0"
                 strokeWidth={2.5}
               />
               <div
@@ -212,6 +212,18 @@ const UserProfileSettings: React.FC<UserProfileSettingsProps> = ({
               </div>
             </div>
           </div>
+        </div>
+
+        {/* EXP Bar */}
+        <div className="relative h-1.5 bg-base-300/60 rounded-b-box overflow-hidden">
+          <div
+            className="absolute top-0 left-0 h-full bg-warning"
+            style={{ width: `42%` }} // TODO: replace with "user.expProgress" when exp system is implemented
+          ></div>
+          <div
+            className="absolute inset-0 pointer-events-none 
+    bg-[repeating-linear-gradient(to_right,rgba(0,0,0,0.3)_0_1px,transparent_1px_8px)]"
+          ></div>
         </div>
       </div>
 

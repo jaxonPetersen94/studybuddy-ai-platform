@@ -1,26 +1,29 @@
 import React, { useState } from 'react';
 import {
-  Radio,
-  Mic,
   Volume2,
-  Clock,
   Play,
-  Pause,
   SkipBack,
   SkipForward,
+  User,
+  Users,
+  UserPlus,
+  PodcastIcon,
 } from 'lucide-react';
 import ChatInput from '../../components/chat/ChatInput';
-
-// ChatInput is imported from components
 
 const Podcast: React.FC = () => {
   const [inputValue, setInputValue] = useState('');
   const [duration, setDuration] = useState(10);
   const [voiceStyle, setVoiceStyle] = useState('conversational');
-  const [hostCount, setHostCount] = useState('single');
+  const [formatType, setFormatType] = useState('single');
 
   const handleSend = () => {
-    console.log('Podcast request sent:', inputValue);
+    console.log('Podcast request sent:', {
+      topic: inputValue,
+      duration,
+      voiceStyle,
+      formatType,
+    });
     setInputValue('');
   };
 
@@ -28,7 +31,7 @@ const Podcast: React.FC = () => {
     <div className="min-h-[calc(100vh-69px)] flex items-center justify-center p-6">
       <div className="w-full max-w-2xl">
         {/* Media Player styled container */}
-        <div className="relative bg-base-200 rounded-box shadow-xl border border-base-300 overflow-hidden max-h-[766px]">
+        <div className="relative bg-base-200 rounded-box shadow-xl border border-base-300 overflow-hidden max-h-[766px] select-none">
           {/* Glowing edge effect */}
           <div className="absolute inset-0 rounded-box opacity-30">
             <div className="absolute inset-0 bg-gradient-to-br from-success/10 via-transparent to-primary/10" />
@@ -52,14 +55,14 @@ const Podcast: React.FC = () => {
               <div className="relative z-10">
                 {/* Icon without glow */}
                 <div className="flex justify-center mb-3">
-                  <Radio className="w-16 h-16 text-success" />
+                  <PodcastIcon className="w-16 h-16 text-success" />
                 </div>
 
-                <h1 className="text-2xl lg:text-3xl font-bold text-center text-base-content mb-2 tracking-tight">
+                <h1 className="text-2xl lg:text-3xl font-bold text-center text-base-content mb-2 tracking-tight select-text">
                   Generate Your Podcast
                 </h1>
 
-                <p className="text-sm text-center text-base-content/70 mb-4 max-w-xl mx-auto">
+                <p className="text-sm text-center text-base-content/70 mb-4 max-w-xl mx-auto select-text">
                   Turn any topic into an engaging audio learning experience.
                   Perfect for learning on the go or during your commute.
                 </p>
@@ -103,8 +106,7 @@ const Podcast: React.FC = () => {
                 {/* Duration and Voice Style */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="flex items-center gap-2 text-xs font-medium text-base-content/70 mb-2 uppercase tracking-wider">
-                      <Clock className="w-3.5 h-3.5" />
+                    <label className="block text-xs font-medium text-base-content/60 mb-1.5">
                       Duration (min)
                     </label>
                     <input
@@ -118,8 +120,7 @@ const Podcast: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="flex items-center gap-2 text-xs font-medium text-base-content/70 mb-2 uppercase tracking-wider">
-                      <Mic className="w-3.5 h-3.5" />
+                    <label className="block text-xs font-medium text-base-content/60 mb-1.5">
                       Voice Style
                     </label>
                     <select
@@ -135,32 +136,59 @@ const Podcast: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Format buttons */}
+                {/* Format buttons - 4 in a row */}
                 <div>
-                  <label className="flex items-center gap-2 text-xs font-medium text-base-content/70 mb-2 uppercase tracking-wider">
+                  <label className="flex items-center gap-2 text-xs font-medium text-base-content/70 mb-2 uppercase tracking-wider select-text cursor-text">
                     <Volume2 className="w-3.5 h-3.5" />
                     Podcast Format
                   </label>
-                  <div className="flex gap-3">
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
                     <button
-                      onClick={() => setHostCount('single')}
-                      className={`flex-1 py-3 px-4 rounded-lg border transition-all font-medium ${
-                        hostCount === 'single'
+                      onClick={() => setFormatType('single')}
+                      className={`py-3 px-3 rounded-lg border transition-all font-medium flex flex-col items-center gap-1.5 ${
+                        formatType === 'single'
                           ? 'bg-success/20 border-success text-success shadow-[0_0_20px_rgba(34,197,94,0.3)]'
                           : 'bg-base-200 border-base-content/20 text-base-content hover:border-success/50 hover:bg-base-300'
                       }`}
                     >
-                      Solo Host
+                      <User className="w-5 h-5" />
+                      <span className="text-xs">Solo Host</span>
                     </button>
                     <button
-                      onClick={() => setHostCount('dialogue')}
-                      className={`flex-1 py-3 px-4 rounded-lg border transition-all font-medium ${
-                        hostCount === 'dialogue'
+                      onClick={() => setFormatType('single-guest')}
+                      className={`py-3 px-3 rounded-lg border transition-all font-medium flex flex-col items-center gap-1.5 ${
+                        formatType === 'single-guest'
                           ? 'bg-success/20 border-success text-success shadow-[0_0_20px_rgba(34,197,94,0.3)]'
                           : 'bg-base-200 border-base-content/20 text-base-content hover:border-success/50 hover:bg-base-300'
                       }`}
                     >
-                      Two Hosts
+                      <UserPlus className="w-5 h-5" />
+                      <span className="text-xs">Solo + Guest</span>
+                    </button>
+                    <button
+                      onClick={() => setFormatType('dialogue')}
+                      className={`py-3 px-3 rounded-lg border transition-all font-medium flex flex-col items-center gap-1.5 ${
+                        formatType === 'dialogue'
+                          ? 'bg-success/20 border-success text-success shadow-[0_0_20px_rgba(34,197,94,0.3)]'
+                          : 'bg-base-200 border-base-content/20 text-base-content hover:border-success/50 hover:bg-base-300'
+                      }`}
+                    >
+                      <Users className="w-5 h-5" />
+                      <span className="text-xs">Two Hosts</span>
+                    </button>
+                    <button
+                      onClick={() => setFormatType('dialogue-guest')}
+                      className={`py-3 px-3 rounded-lg border transition-all font-medium flex flex-col items-center gap-1.5 ${
+                        formatType === 'dialogue-guest'
+                          ? 'bg-success/20 border-success text-success shadow-[0_0_20px_rgba(34,197,94,0.3)]'
+                          : 'bg-base-200 border-base-content/20 text-base-content hover:border-success/50 hover:bg-base-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-0.5">
+                        <Users className="w-4 h-4" />
+                        <UserPlus className="w-4 h-4" />
+                      </div>
+                      <span className="text-xs">Two + Guest</span>
                     </button>
                   </div>
                 </div>
@@ -172,7 +200,7 @@ const Podcast: React.FC = () => {
               value={inputValue}
               onChange={setInputValue}
               onSend={handleSend}
-              placeholder="e.g., The Solar System, World War II, Photosynthesis..."
+              placeholder="What topic should we create a podcast for?"
             />
           </div>
         </div>
