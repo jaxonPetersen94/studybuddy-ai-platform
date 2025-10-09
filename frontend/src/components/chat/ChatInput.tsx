@@ -77,7 +77,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
   const canSend = value.trim() && !disabled;
 
   return (
-    <div className="w-full max-w-3xl mb-8 mx-auto select-none cursor-text px-2">
+    <div className="w-full max-w-3xl mb-2 mx-auto select-none cursor-text px-2">
       <div className="relative select-none will-change-transform">
         <div
           className="p-4 bg-base-100/80 backdrop-blur-sm rounded-2xl border border-base-300/50 shadow-[0_4px_12px_rgba(0,0,0,0.3)] select-none transition-all duration-300 hover:scale-[1.02] hover:border-primary/60 hover:shadow-[0_0_20px_rgba(34,211,238,0.3),0_4px_16px_rgba(0,0,0,0.4)]"

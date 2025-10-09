@@ -11,11 +11,12 @@ import ResetPassword from './pages/auth/ResetPassword';
 import NewChat from './pages/chat/NewChat';
 import ChatSession from './pages/chat/ChatSession';
 import UserSettings from './pages/user/UserSettings';
+import Dashboard from './pages/dashboard/Dashboard';
+import FlashCards from './pages/flashCards/FlashCards';
 import { useUserStore } from './stores/UserStore';
 import { useToastStore } from './stores/ToastStore';
 import { useThemeStore } from './stores/ThemeStore';
 import { ToastContainer } from './components/ui/Toast';
-import Dashboard from './pages/dashboard/Dashboard';
 
 const HomeRoute = () => {
   const { isAuthenticated } = useUserStore();
@@ -74,6 +75,15 @@ function App() {
             element={
               <ProtectedRoute>
                 <ChatSession />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/flashcards"
+            element={
+              <ProtectedRoute>
+                <FlashCards />
               </ProtectedRoute>
             }
           />
