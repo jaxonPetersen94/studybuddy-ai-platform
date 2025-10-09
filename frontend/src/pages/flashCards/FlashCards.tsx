@@ -17,11 +17,17 @@ const FlashCards = () => {
         <div className="relative bg-base-200 rounded-box shadow-2xl p-8 md:p-12 border border-base-300">
           {/* Horizontal Lines Pattern */}
           <div className="absolute inset-0 pointer-events-none opacity-30">
-            {[...Array(12)].map((_, i) => (
+            {/* Top pink line */}
+            <div
+              className="absolute left-0 right-0 h-px bg-pink-400"
+              style={{ top: '16.66%' }}
+            />
+            {/* Remaining lines */}
+            {[...Array(10)].map((_, i) => (
               <div
                 key={i}
                 className="absolute left-0 right-0 h-px bg-primary/20"
-                style={{ top: `${(i + 1) * 8.33}%` }}
+                style={{ top: `${(i + 3) * 8.33}%` }}
               />
             ))}
           </div>

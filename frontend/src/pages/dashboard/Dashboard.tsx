@@ -64,6 +64,8 @@ const Dashboard: React.FC = () => {
       navigate('/new');
     } else if (methodId === 'flashcards') {
       navigate('/flashcards');
+    } else if (methodId === 'quiz') {
+      navigate('/quiz');
     }
     // Add routing logic for other methods as needed
   };
