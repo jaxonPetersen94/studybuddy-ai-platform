@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { GraduationCap } from 'lucide-react';
+import { MessageSquare } from 'lucide-react';
 import ChatInput from '../../components/chat/ChatInput';
 import SidebarComponent from '../../components/layout/Sidebar';
 import { useChatStore } from '../../stores/chat/ChatStore';
@@ -77,7 +77,7 @@ const NewChat: React.FC = () => {
           <div className="text-center mb-10">
             {/* Logo */}
             <div className="flex justify-center mb-4">
-              <GraduationCap className="w-16 h-16 text-primary" />
+              <MessageSquare className="w-16 h-16 text-accent" />
             </div>
 
             <h1 className="text-3xl lg:text-4xl font-bold text-base-content mb-3 tracking-tight">

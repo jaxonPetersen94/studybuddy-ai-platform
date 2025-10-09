@@ -13,6 +13,8 @@ import ChatSession from './pages/chat/ChatSession';
 import NewChat from './pages/chat/NewChat';
 import Dashboard from './pages/dashboard/Dashboard';
 import FlashCards from './pages/flashCards/FlashCards';
+import Podcast from './pages/podcast/Podcast';
+import Presentation from './pages/presentation/Presentation';
 import Quiz from './pages/quiz/Quiz';
 import UserSettings from './pages/user/UserSettings';
 import { useThemeStore } from './stores/ThemeStore';
@@ -94,6 +96,24 @@ function App() {
             element={
               <ProtectedRoute>
                 <ChatSession />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/presentation"
+            element={
+              <ProtectedRoute>
+                <Presentation />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/podcast"
+            element={
+              <ProtectedRoute>
+                <Podcast />
               </ProtectedRoute>
             }
           />
