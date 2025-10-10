@@ -4,17 +4,32 @@ An intelligent learning assistant platform that helps students learn more effect
 
 ## 📸 Screenshots
 
-![StudyBuddy AI Login](screenshots/auth-form.png)
+![Login](screenshots/auth-form.png)
 _Clean and intuitive authentication interface with login and registration functionality_
 
-![StudyBuddy AI Dashboard](screenshots/dashboard.png)
+![Dashboard](screenshots/dashboard.png)
 _Main dashboard featuring study method selection cards including flashcards, quizzes, chat, presentations, and podcasts_
 
-![StudyBuddy AI Chat Interface](screenshots/new-chat.png)
+![Flash Cards](screenshots/flash-cards.png)
+_AI-powered flashcard generator that creates personalized study cards from any topic for efficient memorization and quick review sessions_
+
+![Quiz](screenshots/quiz.png)
+_Customizable quiz generator with adjustable difficulty levels, question count, and multiple question types (multiple choice, true/false, short answer) with percentage distribution control_
+
+![Chat Interface](screenshots/new-chat.png)
 _Chat interface with AI assistant, featuring multi-modal input options and chat history sidebar_
 
-![StudyBuddy AI Chat Session](screenshots/chat-session.png)
+![Chat Session](screenshots/chat-session.png)
 _Active chat session showing AI-powered responses with conversation history in the sidebar_
+
+![Presentation](screenshots/presentation.png)
+_Video presentation generator with AI voiceover narration, allowing customization of slide count, duration, and style for automated slideshow creation_
+
+![Podcast](screenshots/podcast.png)
+_AI-powered podcast generator with customizable duration, voice style, and format options (solo host, solo + guest, two hosts, or two + guest) for engaging audio learning experiences_
+
+![User Settings](screenshots/user-settings.png)
+_Personalized settings dashboard with profile customization, including user information, learning level preferences, study goals, and account management options_
 
 ## 🏗️ Architecture
 
