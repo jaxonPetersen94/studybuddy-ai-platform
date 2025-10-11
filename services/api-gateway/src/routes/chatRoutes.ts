@@ -44,7 +44,11 @@ async function forwardRequest(
   }
 }
 
-async function forwardStreamRequest(req: Request, res: Response, path: string) {
+async function forwardStreamRequest(
+  req: Request,
+  res: Response,
+  path: string,
+): Promise<void> {
   try {
     const response = await fetch(`${CHAT_SERVICE_URL}${path}`, {
       method: 'POST',
@@ -68,7 +72,8 @@ async function forwardStreamRequest(req: Request, res: Response, path: string) {
 
     if (!response.ok) {
       const errorData = await response.json();
-      return res.status(response.status).json(errorData);
+      res.status(response.status).json(errorData);
+      return;
     }
 
     // Set headers for streaming
@@ -77,20 +82,27 @@ async function forwardStreamRequest(req: Request, res: Response, path: string) {
     res.setHeader('Connection', 'keep-alive');
 
     // Pipe the stream response
-    response.body?.pipeTo(
-      new WritableStream({
-        write(chunk) {
-          res.write(chunk);
-        },
-        close() {
-          res.end();
-        },
-        abort(err) {
-          console.error('Stream aborted:', err);
-          res.end();
-        },
-      }),
-    );
+    if (response.body) {
+      await response.body.pipeTo(
+        new WritableStream({
+          write(chunk) {
+            res.write(chunk);
+          },
+          close() {
+            res.end();
+          },
+          abort(err) {
+            console.error('Stream aborted:', err);
+            res.end();
+          },
+        }),
+      );
+    } else {
+      res.status(500).json({
+        error: 'Internal Server Error',
+        message: 'No response body from Chat Service',
+      });
+    }
   } catch (error) {
     console.error(`Error forwarding stream request to chat service: ${error}`);
     res.status(502).json({

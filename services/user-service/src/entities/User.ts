@@ -73,8 +73,8 @@ export class User {
   @OneToMany(() => Notification, (notification) => notification.user)
   notifications!: Notification[];
 
-  @OneToMany(() => NotificationPreferences, (preferences) => preferences.user)
-  notificationPreferences!: NotificationPreferences[];
+  @OneToOne(() => NotificationPreferences, (preferences) => preferences.user)
+  notificationPreferences?: NotificationPreferences;
 
   @OneToOne(() => UserPreferences, (preferences) => preferences.user)
   preferences?: UserPreferences;
