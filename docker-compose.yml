@@ -1,5 +1,8 @@
 services:
-  # Databases
+  # ===========================================
+  # DATABASE LAYER
+  # ===========================================
+
   postgres-user:
     image: postgres:15-alpine
     container_name: studybuddy-user-db
@@ -15,20 +18,81 @@ services:
     networks:
       - studybuddy-network
     restart: unless-stopped
+    shm_size: 256mb
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d studybuddy_users']
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s
+    command: >
+      postgres
+      -c shared_buffers=256MB
+      -c max_connections=100
+      -c effective_cache_size=512MB
+      -c maintenance_work_mem=64MB
+      -c checkpoint_completion_target=0.9
+      -c wal_buffers=16MB
+      -c default_statistics_target=100
+      -c random_page_cost=1.1
+      -c effective_io_concurrency=200
+      -c work_mem=4MB
+      -c min_wal_size=80MB
+      -c max_wal_size=1GB
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
 
-  # Services
+  mongo-ai:
+    image: mongo:7-jammy
+    container_name: studybuddy-ai-db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: your_password
+      MONGO_INITDB_DATABASE: studybuddy_ai
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongo_ai_data:/data/db
+      - mongo_ai_config:/data/configdb
+    networks:
+      - studybuddy-network
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'mongosh', '--quiet', '--eval', 'db.adminCommand("ping")']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    command: >
+      mongod
+      --wiredTigerCacheSizeGB 0.5
+      --directoryperdb
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  # ===========================================
+  # APPLICATION LAYER
+  # ===========================================
+
   user-service:
     build:
       context: ./services/user-service
       dockerfile: Dockerfile
     container_name: studybuddy-user-service
     env_file:
-      - ./services/user-service/.env
+      - ./services/user-service/.env.production
     ports:
       - '5001:5001'
     depends_on:
@@ -39,10 +103,54 @@ services:
     restart: unless-stopped
     healthcheck:
       test: ['CMD-SHELL', 'curl -f http://localhost:5001/health || exit 1']
-      interval: 10s
+      interval: 15s
       timeout: 5s
-      retries: 5
-      start_period: 15s
+      retries: 3
+      start_period: 45s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+
+  ai-service:
+    build:
+      context: ./services/ai-service
+      dockerfile: Dockerfile
+    container_name: studybuddy-ai-service
+    environment:
+      - ENVIRONMENT=production
+    env_file:
+      - ./services/ai-service/.env.production
+    ports:
+      - '5002:5002'
+    depends_on:
+      mongo-ai:
+        condition: service_healthy
+    networks:
+      - studybuddy-network
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -f http://localhost:5002/health || exit 1']
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 45s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+
+  # ===========================================
+  # API GATEWAY LAYER
+  # ===========================================
 
   api-gateway:
     build:
@@ -50,21 +158,35 @@ services:
       dockerfile: Dockerfile
     container_name: studybuddy-api-gateway
     env_file:
-      - ./services/api-gateway/.env
+      - ./services/api-gateway/.env.production
     ports:
       - '3001:3001'
     depends_on:
       user-service:
+        condition: service_healthy
+      ai-service:
         condition: service_healthy
     networks:
       - studybuddy-network
     restart: unless-stopped
     healthcheck:
       test: ['CMD-SHELL', 'curl -f http://localhost:3001/health || exit 1']
-      interval: 10s
+      interval: 15s
       timeout: 5s
-      retries: 5
-      start_period: 25s
+      retries: 3
+      start_period: 50s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+
+  # ===========================================
+  # PRESENTATION LAYER
+  # ===========================================
 
   frontend:
     build:
@@ -82,10 +204,48 @@ services:
     networks:
       - studybuddy-network
     restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'wget --no-verbose --tries=1 --spider http://localhost:80/ || exit 1',
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+
+# ===========================================
+# VOLUMES
+# ===========================================
 
 volumes:
   postgres_user_data:
+    driver: local
+  mongo_ai_data:
+    driver: local
+  mongo_ai_config:
+    driver: local
+
+# ===========================================
+# NETWORKS
+# ===========================================
 
 networks:
   studybuddy-network:
     driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: br-studybuddy
+      com.docker.network.driver.mtu: 1500
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.28.0.0/16

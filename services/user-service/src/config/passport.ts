@@ -46,8 +46,8 @@ passport.use(
       callbackURL: '/api/v1/users/auth/google/callback',
     },
     async (
-      accessToken: string,
-      refreshToken: string | undefined,
+      _accessToken: string,
+      _refreshToken: string | undefined,
       profile: GoogleProfile,
       done: (error: any, user?: any) => void,
     ) => {
@@ -75,8 +75,8 @@ passport.use(
       scope: ['user:email'],
     },
     async (
-      accessToken: string,
-      refreshToken: string | undefined,
+      _accessToken: string,
+      _refreshToken: string | undefined,
       profile: GitHubProfile,
       done: (error: any, user?: any) => void,
     ) => {

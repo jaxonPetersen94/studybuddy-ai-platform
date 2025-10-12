@@ -1,7 +1,7 @@
 import express, { Request, Response } from 'express';
 
 const router = express.Router();
-const CHAT_SERVICE_URL = `${process.env.CHAT_SERVICE_BASE_URL}/api/v1/chats`;
+const AI_SERVICE_URL = `${process.env.AI_SERVICE_BASE_URL}/api/v1/chats`;
 
 async function forwardRequest(
   req: Request,
@@ -10,14 +10,14 @@ async function forwardRequest(
   method: string,
 ) {
   try {
-    const response = await fetch(`${CHAT_SERVICE_URL}${path}`, {
+    const response = await fetch(`${AI_SERVICE_URL}${path}`, {
       method,
       headers: {
         'Content-Type': 'application/json',
         ...(req.headers.authorization
           ? { Authorization: req.headers.authorization }
           : {}),
-        // Forward user info as headers to the Chat Service
+        // Forward user info as headers to the AI Service
         ...(req.user?.id ? { 'X-User-ID': req.user.id } : {}),
         ...(req.user?.email ? { 'X-User-Email': req.user.email } : {}),
         ...(req.user?.firstName
@@ -36,17 +36,21 @@ async function forwardRequest(
     const data = await response.json();
     res.status(response.status).json(data);
   } catch (error) {
-    console.error(`Error forwarding request to chat service: ${error}`);
+    console.error(`Error forwarding request to AI service: ${error}`);
     res.status(502).json({
       error: 'Bad Gateway',
-      message: 'Failed to communicate with Chat Service',
+      message: 'Failed to communicate with AI Service',
     });
   }
 }
 
-async function forwardStreamRequest(req: Request, res: Response, path: string) {
+async function forwardStreamRequest(
+  req: Request,
+  res: Response,
+  path: string,
+): Promise<void> {
   try {
-    const response = await fetch(`${CHAT_SERVICE_URL}${path}`, {
+    const response = await fetch(`${AI_SERVICE_URL}${path}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -68,7 +72,8 @@ async function forwardStreamRequest(req: Request, res: Response, path: string) {
 
     if (!response.ok) {
       const errorData = await response.json();
-      return res.status(response.status).json(errorData);
+      res.status(response.status).json(errorData);
+      return;
     }
 
     // Set headers for streaming
@@ -77,25 +82,32 @@ async function forwardStreamRequest(req: Request, res: Response, path: string) {
     res.setHeader('Connection', 'keep-alive');
 
     // Pipe the stream response
-    response.body?.pipeTo(
-      new WritableStream({
-        write(chunk) {
-          res.write(chunk);
-        },
-        close() {
-          res.end();
-        },
-        abort(err) {
-          console.error('Stream aborted:', err);
-          res.end();
-        },
-      }),
-    );
+    if (response.body) {
+      await response.body.pipeTo(
+        new WritableStream({
+          write(chunk) {
+            res.write(chunk);
+          },
+          close() {
+            res.end();
+          },
+          abort(err) {
+            console.error('Stream aborted:', err);
+            res.end();
+          },
+        }),
+      );
+    } else {
+      res.status(500).json({
+        error: 'Internal Server Error',
+        message: 'No response body from AI Service',
+      });
+    }
   } catch (error) {
-    console.error(`Error forwarding stream request to chat service: ${error}`);
+    console.error(`Error forwarding stream request to AI service: ${error}`);
     res.status(502).json({
       error: 'Bad Gateway',
-      message: 'Failed to communicate with Chat Service',
+      message: 'Failed to communicate with AI Service',
     });
   }
 }

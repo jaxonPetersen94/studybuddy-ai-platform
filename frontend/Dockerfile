@@ -1,5 +1,4 @@
 # Stage 1: Build
-# FROM node:20-alpine AS build
 FROM node:20-bullseye AS build
 
 # Set working directory
@@ -21,6 +20,9 @@ RUN npm run build
 
 # Stage 2: Production
 FROM nginx:alpine
+
+# Copy custom nginx config (THIS IS THE KEY LINE!)
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Copy built files from build stage
 COPY --from=build /app/dist /usr/share/nginx/html

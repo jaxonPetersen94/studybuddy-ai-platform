@@ -5,6 +5,8 @@ declare namespace NodeJS {
     NODE_ENV?: 'development' | 'production' | 'test';
     JWT_SECRET?: string;
     USER_SERVICE_BASE_URL?: string;
-    CHAT_SERVICE_BASE_URL?: string;
+    AI_SERVICE_BASE_URL?: string;
+    USER_SERVICE_CLIENT_URL?: string;
+    AI_SERVICE_CLIENT_URL?: string;
   }
 }

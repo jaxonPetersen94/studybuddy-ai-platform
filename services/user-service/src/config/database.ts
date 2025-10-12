@@ -22,6 +22,15 @@ const username = DB_USERNAME || 'postgres';
 const password = DB_PASSWORD || 'your_password';
 const database = DB_NAME || 'studybuddy_users';
 
+// Determine if we're running compiled code or source code
+const isCompiled = __filename.endsWith('.js');
+const migrationsPath = isCompiled
+  ? ['dist/migrations/*.js']
+  : ['src/migrations/*.ts'];
+const subscribersPath = isCompiled
+  ? ['dist/subscribers/*.js']
+  : ['src/subscribers/*.ts'];
+
 export const AppDataSource = new DataSource({
   type: 'postgres',
   host,
@@ -39,8 +48,8 @@ export const AppDataSource = new DataSource({
     NotificationPreferences,
     UserPreferences,
   ],
-  migrations: ['src/migrations/*.ts'],
-  subscribers: ['src/subscribers/*.ts'],
+  migrations: migrationsPath,
+  subscribers: subscribersPath,
 });
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -58,7 +67,7 @@ export const initializeDatabase = async (
       return;
     } catch (error: any) {
       console.error(
-        `❌ Database connection failed (attempt ${attempt} of ${retries}): ${error.message}`,
+        `❌ Database connection failed (attempt ${attempt} of ${retries}): ${error}`,
       );
       if (attempt < retries) {
         console.log(`⏳ Retrying in ${delay / 1000} seconds...`);

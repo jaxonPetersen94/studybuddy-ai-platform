@@ -5,8 +5,8 @@
   "main": "server.ts",
   "scripts": {
     "build": "rimraf dist && tsc",
-    "start": "node dist/server.ts",
-    "dev": "tsx watch src/server.ts",
+    "start": "node --env-file=.env.production dist/server.ts",
+    "dev": "tsx watch --env-file=.env.development src/server.ts",
     "migration:generate": "typeorm-ts-node-commonjs migration:generate -d src/config/database.ts",
     "migration:run": "typeorm-ts-node-commonjs migration:run -d src/config/database.ts",
     "migration:revert": "typeorm-ts-node-commonjs migration:revert -d src/config/database.ts",
@@ -25,7 +25,6 @@
   "dependencies": {
     "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
-    "dotenv": "^17.2.1",
     "express": "^5.1.0",
     "express-rate-limit": "^8.0.1",
     "express-session": "^1.18.2",

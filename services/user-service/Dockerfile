@@ -7,12 +7,11 @@ RUN apk add --no-cache curl
 # Set working directory
 WORKDIR /usr/src/app
 
-# Copy package.json and package-lock.json / pnpm-lock.yaml / yarn.lock first
-# (helps Docker cache dependencies)
+# Copy package.json and package-lock.json first
 COPY package*.json ./
 
-# Install dependencies
-RUN npm install --production
+# Install ALL dependencies (including devDependencies for migrations)
+RUN npm install
 
 # Copy the rest of the source code
 COPY . .
@@ -23,9 +22,9 @@ RUN npm run build
 # Expose the port your service uses
 EXPOSE 5001
 
-# Set environment variables (optional defaults)
+# Set environment variables
 ENV NODE_ENV=production
 ENV PORT=5001
 
-# Start the service
-CMD ["node", "dist/server.js"]
+# Run migrations from compiled JS, then start the server
+CMD ["sh", "-c", "npx typeorm migration:run -d dist/config/database.js && node dist/server.js"]

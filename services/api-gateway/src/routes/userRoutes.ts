@@ -2,6 +2,9 @@ import express, { Request, Response } from 'express';
 
 const router = express.Router();
 const USER_SERVICE_URL = `${process.env.USER_SERVICE_BASE_URL}/api/v1/users`;
+const USER_SERVICE_CLIENT_URL = `${
+  process.env.USER_SERVICE_CLIENT_URL || process.env.USER_SERVICE_BASE_URL
+}/api/v1/users`;
 
 async function forwardRequest(
   req: Request,
@@ -115,13 +118,14 @@ router.post('/notifications/test', (req, res) =>
 
 /**
  * OAuth Routes
+ * These redirect the browser, so they need to use the CLIENT URL
  */
 router.get('/auth/google', (_req, res) => {
-  const userServiceAuthUrl = `${USER_SERVICE_URL}/auth/google`;
+  const userServiceAuthUrl = `${USER_SERVICE_CLIENT_URL}/auth/google`;
   res.redirect(userServiceAuthUrl);
 });
 router.get('/auth/github', (_req, res) => {
-  const userServiceAuthUrl = `${USER_SERVICE_URL}/auth/github`;
+  const userServiceAuthUrl = `${USER_SERVICE_CLIENT_URL}/auth/github`;
   res.redirect(userServiceAuthUrl);
 });
 
