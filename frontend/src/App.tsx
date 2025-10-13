@@ -43,7 +43,7 @@ function App() {
       <Background />
 
       {isAuthenticated && (
-        <div className="relative z-50">
+        <div className="sticky top-0 z-50">
           <Header />
         </div>
       )}
