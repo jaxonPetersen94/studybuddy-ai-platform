@@ -10,7 +10,7 @@ class Message(BaseModel):
     
     # Primary fields - using string IDs to match your User model pattern
     id: Optional[PyObjectId] = Field(default_factory=PyObjectId, alias="_id")
-    session_id: str = Field(..., description="Session ID this message belongs to")
+    session_id: PyObjectId = Field(..., description="Session ID this message belongs to")
     user_id: str = Field(..., description="User ID from the User Service")
     
     # Message content
@@ -52,15 +52,6 @@ class Message(BaseModel):
     is_flagged: bool = Field(default=False, description="Content moderation flag")
     moderation_score: Optional[str] = Field(None, description="Moderation confidence")
     
-    # Validators
-    @field_validator('session_id', mode='before')
-    @classmethod
-    def convert_objectid_to_string(cls, v):
-        """Convert ObjectId to string for session_id"""
-        if isinstance(v, ObjectId):
-            return str(v)
-        return v
-    
     @field_validator('metadata', 'generation_config', mode='before')
     @classmethod
     def ensure_dict_not_none(cls, v):
@@ -97,7 +88,7 @@ class Message(BaseModel):
         """Convert message to dictionary representation"""
         data = {
             "id": str(self.id),
-            "session_id": self.session_id,
+            "session_id": str(self.session_id),
             "user_id": self.user_id,
             "role": self.role,
             "status": self.status,

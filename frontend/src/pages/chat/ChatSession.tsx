@@ -1,11 +1,9 @@
 import React, { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
 import ChatBubble from '../../components/chat/ChatBubble';
 import ChatInput from '../../components/chat/ChatInput';
 import SidebarComponent from '../../components/layout/Sidebar';
 import { useChatStore } from '../../stores/chat/ChatStore';
-import { formatTimestamp } from '../../utils/dateUtils';
 import SessionList from '../../components/chat/SessionList';
 
 const ChatSession: React.FC = () => {

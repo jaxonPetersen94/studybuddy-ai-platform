@@ -1,6 +1,7 @@
 import logging
 import structlog
 from typing import Any
+import litellm
 
 
 def setup_logging(log_level: str = "INFO") -> None:
@@ -38,6 +39,13 @@ def setup_logging(log_level: str = "INFO") -> None:
     logging.getLogger("pymongo.topology").setLevel(logging.ERROR)
     logging.getLogger("pymongo.heartbeat").setLevel(logging.ERROR)
     logging.getLogger("pymongo.pool").setLevel(logging.ERROR)
+    
+    # Silence LiteLLM verbose logging
+    litellm.set_verbose = False
+    logging.getLogger("LiteLLM").setLevel(logging.WARNING)
+    logging.getLogger("litellm").setLevel(logging.WARNING)
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("openai").setLevel(logging.WARNING)
 
 
 def get_logger(name: str) -> Any:
