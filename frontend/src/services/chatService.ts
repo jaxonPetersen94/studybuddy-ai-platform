@@ -12,6 +12,8 @@ import type {
   UpdateSessionRequest,
   RegenerateMessageRequest,
   MessageFeedbackRequest,
+  SessionType,
+  GetSessionsRequest,
 } from '../types/chatTypes';
 import type { ApiResponse } from '../types/apiTypes';
 import { ApiError } from '../types/errorTypes';
@@ -32,6 +34,7 @@ export const chatService = {
       return {
         id: response.data.id,
         title: response.data.title,
+        session_type: response.data.session_type,
         lastMessage: data.initialMessage || '',
         created_at: response.data.created_at,
         updated_at: response.data.updated_at,
@@ -72,12 +75,20 @@ export const chatService = {
 
   async getSessions(
     token: string,
-    page = 1,
-    limit = 20,
+    data: GetSessionsRequest = {},
   ): Promise<GetSessionsResponse> {
     try {
+      const { page = 1, limit = 20, session_type } = data;
+
+      let endpoint = `${API_ENDPOINTS.CHAT.SESSIONS}?page=${page}&limit=${limit}`;
+
+      // Add session_type filter if provided
+      if (session_type) {
+        endpoint += `&session_type=${session_type}`;
+      }
+
       const response = await apiClient.get<ApiResponse<GetSessionsResponse>>(
-        `${API_ENDPOINTS.CHAT.SESSIONS}?page=${page}&limit=${limit}`,
+        endpoint,
         token,
       );
 

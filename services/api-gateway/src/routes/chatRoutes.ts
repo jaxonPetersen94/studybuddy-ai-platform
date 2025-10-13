@@ -10,14 +10,23 @@ async function forwardRequest(
   method: string,
 ) {
   try {
-    const response = await fetch(`${AI_SERVICE_URL}${path}`, {
+    // Build URL with query parameters
+    const url = new URL(`${AI_SERVICE_URL}${path}`);
+
+    // Add all query parameters from the original request
+    Object.entries(req.query).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        url.searchParams.append(key, String(value));
+      }
+    });
+
+    const response = await fetch(url.toString(), {
       method,
       headers: {
         'Content-Type': 'application/json',
         ...(req.headers.authorization
           ? { Authorization: req.headers.authorization }
           : {}),
-        // Forward user info as headers to the AI Service
         ...(req.user?.id ? { 'X-User-ID': req.user.id } : {}),
         ...(req.user?.email ? { 'X-User-Email': req.user.email } : {}),
         ...(req.user?.firstName
@@ -50,7 +59,17 @@ async function forwardStreamRequest(
   path: string,
 ): Promise<void> {
   try {
-    const response = await fetch(`${AI_SERVICE_URL}${path}`, {
+    // Build URL with query parameters
+    const url = new URL(`${AI_SERVICE_URL}${path}`);
+
+    // Add all query parameters from the original request
+    Object.entries(req.query).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        url.searchParams.append(key, String(value));
+      }
+    });
+
+    const response = await fetch(url.toString(), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

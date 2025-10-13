@@ -43,7 +43,8 @@ async def get_sessions(
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
     search: Optional[str] = Query(None),
-    starred: Optional[bool] = Query(None)
+    starred: Optional[bool] = Query(None),
+    session_type: Optional[str] = Query(None)
 ):
     """Get all sessions for the authenticated user"""
     try:
@@ -52,7 +53,8 @@ async def get_sessions(
             limit=limit,
             offset=offset,
             search=search,
-            starred=starred
+            starred=starred,
+            session_type=session_type
         )
         return {
             "success": True,

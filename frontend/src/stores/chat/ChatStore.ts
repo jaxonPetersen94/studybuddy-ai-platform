@@ -8,6 +8,7 @@ import type {
   UpdateSessionRequest,
   MessageFeedbackRequest,
   RegenerateMessageRequest,
+  SessionType,
 } from '../../types/chatTypes';
 import { QuickAction } from '../../types/uiTypes';
 import * as actions from './ChatActions';
@@ -48,12 +49,13 @@ interface ChatStore {
   createSessionAndSend: (
     data: SendMessageRequest & {
       title?: string;
+      session_type?: SessionType;
       subject?: string;
       quickAction?: string;
     },
   ) => Promise<ChatSession>;
   loadSession: (sessionId: string) => Promise<void>;
-  loadSessions: (refresh?: boolean) => Promise<void>;
+  loadSessions: (refresh?: boolean, sessionType?: SessionType) => Promise<void>;
   updateSession: (
     sessionId: string,
     data: UpdateSessionRequest,
@@ -127,8 +129,8 @@ export const useChatStore = create<ChatStore>()(
         actions.createSessionAndSendAction(data, set, get),
       loadSession: (sessionId) =>
         actions.loadSessionAction(sessionId, set, get),
-      loadSessions: (refresh = false) =>
-        actions.loadSessionsAction(refresh, set, get),
+      loadSessions: (refresh = false, sessionType) =>
+        actions.loadSessionsAction(refresh, set, get, sessionType),
       updateSession: (sessionId, data) =>
         actions.updateSessionAction(sessionId, data, set, get),
       deleteSession: (sessionId) =>

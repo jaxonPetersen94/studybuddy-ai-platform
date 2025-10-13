@@ -1,5 +1,12 @@
 import { ApiResponse } from './apiTypes';
 
+export type SessionType =
+  | 'flashcards'
+  | 'quiz'
+  | 'chat'
+  | 'presentation'
+  | 'podcast';
+
 export interface ChatAttachment {
   id: string;
   name: string;
@@ -51,6 +58,7 @@ export interface ChatMessage {
 export interface ChatSession {
   created_at: string;
   id: string;
+  session_type: SessionType;
   isStarred?: boolean;
   last_activity?: string;
   messageCount?: number;
@@ -119,6 +127,7 @@ export type SendMessageResponse = ApiResponse<SendMessageData>;
 
 export interface CreateSessionRequest {
   title?: string;
+  session_type?: SessionType;
   subject?: string;
   quickAction?: string;
   initialMessage?: string;
@@ -127,10 +136,17 @@ export interface CreateSessionRequest {
 export interface CreateSessionResponse {
   id: string;
   title: string;
+  session_type: SessionType;
   created_at: string;
   updated_at: string;
   is_starred: boolean;
   message_count: number;
+}
+
+export interface GetSessionsRequest {
+  session_type?: SessionType;
+  page?: number;
+  limit?: number;
 }
 
 export interface GetSessionsResponse {
@@ -154,6 +170,7 @@ export interface GetMessagesResponse {
 
 export interface UpdateSessionRequest {
   title?: string;
+  session_type?: SessionType;
   isStarred?: boolean;
 }
 

@@ -111,7 +111,8 @@ class SessionService:
         starred: Optional[bool] = None,
         pinned: Optional[bool] = None,
         archived: Optional[bool] = None,
-        tags: Optional[List[str]] = None
+        tags: Optional[List[str]] = None,
+        session_type: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Get all sessions for a user with optional filtering
@@ -125,6 +126,7 @@ class SessionService:
             pinned: Optional filter for pinned sessions
             archived: Optional filter for archived sessions
             tags: Optional filter for sessions with specific tags
+            session_type: Optional filter for session type (e.g., 'chat', 'voice', 'video')
             
         Returns:
             Dictionary containing sessions and pagination info
@@ -150,6 +152,10 @@ class SessionService:
             
             if tags:
                 query_filter["tags"] = {"$in": tags}
+            
+            # Add session_type filter
+            if session_type:
+                query_filter["session_type"] = session_type
             
             # Get sessions with pagination using aggregation to include message count
             pipeline = [

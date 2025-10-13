@@ -42,7 +42,7 @@ const ChatSession: React.FC = () => {
 
   // Load sessions for sidebar
   useEffect(() => {
-    loadSessions();
+    loadSessions(true, 'chat');
   }, []);
 
   const handleSendMessage = async () => {

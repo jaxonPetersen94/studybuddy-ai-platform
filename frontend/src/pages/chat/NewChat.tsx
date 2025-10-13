@@ -21,7 +21,7 @@ const NewChat: React.FC = () => {
   } = useChatStore();
 
   useEffect(() => {
-    loadSessions();
+    loadSessions(true, 'chat');
   }, []);
 
   const handleSendMessage = async () => {
@@ -34,6 +34,7 @@ const NewChat: React.FC = () => {
         title:
           userText.trim().substring(0, 50) +
           (userText.trim().length > 50 ? '...' : ''),
+        session_type: 'chat',
       });
 
       // Clear the input

@@ -1,7 +1,11 @@
 from datetime import datetime, timezone
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Literal
 from pydantic import BaseModel, Field, field_validator
 from app.core.database import PyObjectId, MongoBaseConfig
+
+
+# Define session type as a Literal type for type safety
+SessionType = Literal["flashcards", "quiz", "chat", "presentation", "podcast"]
 
 
 class Session(BaseModel):
@@ -10,6 +14,12 @@ class Session(BaseModel):
     # Primary fields
     id: Optional[PyObjectId] = Field(default_factory=PyObjectId, alias="_id")
     user_id: str = Field(..., description="User ID from the User Service")
+    
+    # Session type
+    session_type: SessionType = Field(
+        default="chat",
+        description="Type of session: 'flashcards', 'quiz', 'chat', 'presentation', or 'podcast'"
+    )
     
     # Session content
     title: str = Field(..., description="Session title/name")
@@ -53,6 +63,7 @@ class Session(BaseModel):
         json_schema_extra = {
             "example": {
                 "user_id": "user_456",
+                "session_type": "chat",
                 "title": "Help with Python coding",
                 "status": "active",
                 "message_count": 12,
@@ -69,13 +80,14 @@ class Session(BaseModel):
         }
     
     def __repr__(self):
-        return f"<Session(id={self.id}, title={self.title}, user_id={self.user_id})>"
+        return f"<Session(id={self.id}, type={self.session_type}, title={self.title}, user_id={self.user_id})>"
     
     def to_dict(self, include_sensitive: bool = True) -> Dict[str, Any]:
         """Convert session to dictionary representation"""
         data = {
             "id": str(self.id),
             "user_id": self.user_id,
+            "session_type": self.session_type,
             "title": self.title,
             "status": self.status,
             "created_at": self.created_at.isoformat() if self.created_at else None,
@@ -109,7 +121,7 @@ class Session(BaseModel):
     def update_from_dict(self, data: Dict[str, Any]) -> None:
         """Update session fields from dictionary data"""
         updatable_fields = [
-            "title", "status", "last_activity", "message_count",
+            "title", "session_type", "status", "last_activity", "message_count",
             "generation_config", "is_pinned", "is_archived", "tags",
             "metadata", "updated_at"
         ]
@@ -146,6 +158,31 @@ class Session(BaseModel):
         
         time_diff = datetime.now(timezone.utc) - self.last_activity
         return time_diff.total_seconds() < (hours * 3600)
+    
+    @property
+    def is_flashcards(self) -> bool:
+        """Check if session is a flashcards session"""
+        return self.session_type == "flashcards"
+    
+    @property
+    def is_quiz(self) -> bool:
+        """Check if session is a quiz session"""
+        return self.session_type == "quiz"
+    
+    @property
+    def is_chat(self) -> bool:
+        """Check if session is a chat session"""
+        return self.session_type == "chat"
+    
+    @property
+    def is_presentation(self) -> bool:
+        """Check if session is a presentation session"""
+        return self.session_type == "presentation"
+    
+    @property
+    def is_podcast(self) -> bool:
+        """Check if session is a podcast session"""
+        return self.session_type == "podcast"
     
     def update_activity(self) -> None:
         """Update last activity timestamp"""

@@ -8,6 +8,7 @@ import type {
   UpdateSessionRequest,
   MessageFeedbackRequest,
   RegenerateMessageRequest,
+  SessionType,
 } from '../../types/chatTypes';
 
 // Type for the store's set function
@@ -45,6 +46,7 @@ export const createSessionAction = async (
 export const createSessionAndSendAction = async (
   data: SendMessageRequest & {
     title?: string;
+    session_type?: SessionType;
     subject?: string;
     quickAction?: string;
   },
@@ -62,6 +64,7 @@ export const createSessionAndSendAction = async (
           data.title ||
           data.content.substring(0, 50) +
             (data.content.length > 50 ? '...' : ''),
+        session_type: data.session_type || 'chat',
         subject: data.subject,
         quickAction: data.quickAction,
         initialMessage: data.content,
@@ -136,6 +139,7 @@ export const loadSessionsAction = async (
   refresh: boolean,
   set: SetState,
   get: GetState,
+  sessionType?: SessionType,
 ): Promise<void> => {
   if (refresh) {
     set({ sessionsPage: 1, hasMoreSessions: true });
@@ -147,7 +151,11 @@ export const loadSessionsAction = async (
     const token = getAuthToken();
     const { sessionsPage } = get();
 
-    const response = await chatService.getSessions(token, sessionsPage, 20);
+    const response = await chatService.getSessions(token, {
+      page: sessionsPage,
+      limit: 20,
+      session_type: sessionType,
+    });
 
     set((state: any) => {
       const allSessions = refresh
