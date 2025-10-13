@@ -1,5 +1,6 @@
 import React from 'react';
 import { User, Bot, Copy, ThumbsUp, ThumbsDown, RotateCcw } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 import { formatTimestamp } from '../../utils/dateUtils';
 
 interface ChatBubbleProps {
@@ -99,7 +100,7 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({
         {/* Message bubble */}
         <div
           className={`
-            relative px-4 py-3 rounded-2xl max-w-full shadow-lg
+            relative px-6 py-3 rounded-2xl max-w-full shadow-lg
             ${
               isUser
                 ? 'bg-primary text-primary-content rounded-br-md'
@@ -110,10 +111,63 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({
           {isTyping ? (
             <TypingIndicator />
           ) : (
-            <div className="prose prose-sm max-w-none">
-              <p className="mb-0 whitespace-pre-wrap break-words leading-relaxed">
+            <div className="text-sm">
+              <ReactMarkdown
+                components={{
+                  p: ({ children }) => (
+                    <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>
+                  ),
+                  ul: ({ children }) => (
+                    <ul className="list-disc list-inside my-2 space-y-1">
+                      {children}
+                    </ul>
+                  ),
+                  ol: ({ children }) => (
+                    <ol className="list-decimal list-inside my-2 space-y-1">
+                      {children}
+                    </ol>
+                  ),
+                  li: ({ children }) => (
+                    <li className="leading-relaxed pl-2">{children}</li>
+                  ),
+                  code: ({ node, children, ...props }) => {
+                    const isInline =
+                      !node?.position ||
+                      node.position.start.line === node.position.end.line;
+
+                    return isInline ? (
+                      <code
+                        className="px-1.5 py-0.5 rounded bg-base-300 font-mono text-xs"
+                        {...props}
+                      >
+                        {children}
+                      </code>
+                    ) : (
+                      <pre className="p-3 rounded-lg bg-base-300 overflow-x-auto my-2">
+                        <code className="font-mono text-xs" {...props}>
+                          {children}
+                        </code>
+                      </pre>
+                    );
+                  },
+                  strong: ({ children }) => (
+                    <strong className="font-semibold">{children}</strong>
+                  ),
+                  em: ({ children }) => <em className="italic">{children}</em>,
+                  a: ({ href, children }) => (
+                    <a
+                      href={href}
+                      className="text-primary hover:underline"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {children}
+                    </a>
+                  ),
+                }}
+              >
                 {message}
-              </p>
+              </ReactMarkdown>
             </div>
           )}
         </div>
