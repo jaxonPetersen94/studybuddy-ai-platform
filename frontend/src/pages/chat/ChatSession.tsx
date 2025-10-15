@@ -17,7 +17,7 @@ const ChatSession: React.FC = () => {
     userText,
     isSending,
     isSidebarOpen,
-    sendMessage,
+    sendMessageStream,
     loadSession,
     loadSessions,
     setUserText,
@@ -33,10 +33,10 @@ const ChatSession: React.FC = () => {
     if (sessionId) {
       loadSession(sessionId).catch(() => {
         // If session doesn't exist, redirect to new chat
-        navigate('/new');
+        navigate('/new-chat');
       });
     } else {
-      navigate('/new');
+      navigate('/new-chat');
     }
   }, [sessionId]);
 
@@ -49,7 +49,7 @@ const ChatSession: React.FC = () => {
     if (!userText.trim() || isSending || !currentSession) return;
 
     try {
-      await sendMessage({
+      await sendMessageStream({
         content: userText.trim(),
       });
       setUserText('');
@@ -59,7 +59,7 @@ const ChatSession: React.FC = () => {
   };
 
   const handleNewChat = () => {
-    navigate('/new');
+    navigate('/new-chat');
   };
 
   const handleSessionClick = (sessionId: string) => {

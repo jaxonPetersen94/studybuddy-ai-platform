@@ -55,6 +55,24 @@ class AIService:
         }
         
         logger.info("AI Service initialized with LiteLLM")
+
+    async def chat_completion(self, request_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Non-streaming chat completion"""
+        try:
+            messages = request_data.get("messages", [])
+            model_config = request_data.get("model_config", {})
+            model_name = model_config.get("model", self.default_model)
+            params = self._prepare_model_parameters(model_config, model_name)
+
+            response = await litellm.acompletion(
+                messages=messages,
+                **params
+            )
+            content = response.choices[0].message.content if response.choices else ""
+            return {"content": content}
+        except Exception as e:
+            logger.error(f"Error in chat_completion: {str(e)}")
+            raise AIServiceError(str(e))
     
     async def stream_chat_completion(
         self, 

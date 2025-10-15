@@ -12,7 +12,8 @@ import ResetPassword from './pages/auth/ResetPassword';
 import ChatSession from './pages/chat/ChatSession';
 import NewChat from './pages/chat/NewChat';
 import Dashboard from './pages/dashboard/Dashboard';
-import FlashCards from './pages/flashCards/FlashCards';
+import NewFlashCards from './pages/flashCards/NewFlashCards';
+import FlashCardsSession from './pages/flashCards/FlashCardsSession';
 import Podcast from './pages/podcast/Podcast';
 import Presentation from './pages/presentation/Presentation';
 import Quiz from './pages/quiz/Quiz';
@@ -64,11 +65,20 @@ function App() {
             }
           />
 
+          {/* FlashCards Routes */}
           <Route
-            path="/flashcards"
+            path="/new-flashcards"
             element={
               <ProtectedRoute>
-                <FlashCards />
+                <NewFlashCards />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/flashcards/:sessionId"
+            element={
+              <ProtectedRoute>
+                <FlashCardsSession />
               </ProtectedRoute>
             }
           />
@@ -83,14 +93,13 @@ function App() {
           />
 
           <Route
-            path="/new"
+            path="/new-chat"
             element={
               <ProtectedRoute>
                 <NewChat />
               </ProtectedRoute>
             }
           />
-
           <Route
             path="/chat/:sessionId"
             element={
@@ -108,7 +117,6 @@ function App() {
               </ProtectedRoute>
             }
           />
-
           <Route
             path="/podcast"
             element={

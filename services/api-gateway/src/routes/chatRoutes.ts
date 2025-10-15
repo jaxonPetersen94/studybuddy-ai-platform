@@ -187,6 +187,9 @@ router.post('/messages/:messageId/feedback', (req, res) =>
     'POST',
   ),
 );
+router.post('/messages/send', (req, res) =>
+  forwardRequest(req, res, '/messages/send', 'POST'),
+);
 
 /**
  * Streaming Route

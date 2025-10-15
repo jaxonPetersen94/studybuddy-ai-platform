@@ -2,7 +2,7 @@ import asyncio
 import json
 from datetime import datetime
 from typing import Optional
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, Response, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import StreamingResponse
 
 from app.core.security import get_current_user
@@ -16,6 +16,7 @@ from app.schemas.chat import (
     MessageUpdate,
     SessionCreate,
     SessionUpdate,
+    SendMessageRequest,
     StreamMessageRequest,
 )
 
@@ -69,11 +70,16 @@ async def get_sessions(
 async def create_session(
     session_data: SessionCreate,
     session_service: SessionServiceDep,
-    user: User = Depends(get_current_user)
+    user: User = Depends(get_current_user),
+    session_type: Optional[str] = Query(None)
 ):
     """Create a new chat session"""
-    try:
-        session = await session_service.create_session(user.id, session_data.dict())
+    try:  
+        session_dict = session_data.dict()
+        if session_type is not None:
+            session_dict["session_type"] = session_type
+
+        session = await session_service.create_session(user.id, session_dict)
         return {
             "success": True,
             "data": session,
@@ -326,6 +332,50 @@ async def submit_feedback(
         logger.error(f"Error submitting feedback for message {message_id}, user {user.id}: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to submit feedback")
 
+@router.post("/messages/send", status_code=201)
+async def send_message(
+    message_data: SendMessageRequest,
+    chat_service: ChatServiceDep,
+    user: User = Depends(get_current_user)
+):
+    """
+    Send a message and get AI response (non-streaming).
+    This endpoint delegates all logic to chat_service.generate_response()
+    """
+    try:
+        # Prepare metadata if needed
+        metadata = {}
+        if message_data.subject:
+            metadata["subject"] = message_data.subject
+        if message_data.quick_action:
+            metadata["quick_action"] = message_data.quick_action
+
+        logger.info(f'model_config = {message_data.model_config_data}')
+        
+        # Generate response (creates user message internally)
+        result = await chat_service.generate_response(
+            user_id=user.id,
+            message_content=message_data.content,
+            session_id=message_data.session_id,  # Optional, creates new if None
+            attachments=message_data.attachments or [],
+            model_config=message_data.model_config_data or {},
+            response_format=message_data.response_format,
+            system_prompt=message_data.system_prompt,
+            metadata=metadata if metadata else None
+        )
+        
+        return {
+            "success": True,
+            "data": result,  # Contains user_message, ai_message, and session_id
+            "timestamp": datetime.now().isoformat()
+        }
+    except ValueError as e:
+        # Handle specific validation errors (like session not found)
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error sending message for user {user.id}: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to send message: {str(e)}")
+
 # ============================================================================
 # Streaming Route
 # ============================================================================
@@ -454,7 +504,8 @@ async def search_sessions(
     session_service: SessionServiceDep,
     user: User = Depends(get_current_user),
     limit: int = Query(20, ge=1, le=100),
-    offset: int = Query(0, ge=0)
+    offset: int = Query(0, ge=0),
+    session_type: Optional[str] = Query(None)
 ):
     """Search sessions"""
     try:
@@ -462,7 +513,8 @@ async def search_sessions(
             user_id=user.id,
             query=q,
             limit=limit,
-            offset=offset
+            offset=offset,
+            session_type=session_type
         )
         return {
             "success": True,

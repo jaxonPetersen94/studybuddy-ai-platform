@@ -15,6 +15,7 @@ import type {
 type SetState = (partial: any) => void;
 type GetState = () => any;
 
+// Session management actions
 export const createSessionAction = async (
   data: CreateSessionRequest | undefined,
   set: SetState,
@@ -43,7 +44,69 @@ export const createSessionAction = async (
   }
 };
 
-export const createSessionAndSendAction = async (
+export const createSessionAndSendMessageAction = async (
+  data: SendMessageRequest & {
+    title?: string;
+    session_type?: SessionType;
+    subject?: string;
+    quickAction?: string;
+    responseFormat?: 'json' | 'text';
+    systemPrompt?: string;
+  },
+  set: SetState,
+  get: GetState,
+): Promise<{ session: ChatSession; message: ChatMessage }> => {
+  set({ isSending: true, isLoading: true, error: null });
+
+  try {
+    const token = getAuthToken();
+
+    // Create the session
+    const newSession = await chatService.createSession(
+      {
+        title:
+          data.title ||
+          data.content.substring(0, 50) +
+            (data.content.length > 50 ? '...' : ''),
+        session_type: data.session_type || 'chat',
+        subject: data.subject,
+        quickAction: data.quickAction,
+      },
+      token,
+    );
+
+    // Update state with new session (TODO: might not need- duplicate state set?)
+    set((state: any) => ({
+      currentSession: newSession,
+      sessions: [newSession, ...state.sessions],
+      hasStartedChat: true,
+      currentMessages: [],
+      isLoading: false,
+    }));
+
+    // Send the non-streaming message
+    const message = await sendMessageAction(
+      {
+        ...data,
+        sessionId: newSession.id,
+      },
+      set,
+      get,
+    );
+
+    return { session: newSession, message };
+  } catch (error: any) {
+    set({ isSending: false, isLoading: false });
+    const errorMessage = await handleApiError(
+      error,
+      'create session and send message',
+    );
+    set({ error: errorMessage });
+    throw error;
+  }
+};
+
+export const createSessionAndSendMessageStreamAction = async (
   data: SendMessageRequest & {
     title?: string;
     session_type?: SessionType;
@@ -82,7 +145,10 @@ export const createSessionAndSendAction = async (
 
     // Send message in background
     get()
-      .sendMessage(data)
+      .sendMessageStream({
+        ...data,
+        sessionId: newSession.id,
+      })
       .catch((error: any) => {
         console.error('Error sending initial message:', error);
       });
@@ -145,7 +211,7 @@ export const loadSessionsAction = async (
     set({ sessionsPage: 1, hasMoreSessions: true });
   }
 
-  set({ sessionsLoading: true, sessionsError: null });
+  set({ isLoading: true, error: null });
 
   try {
     const token = getAuthToken();
@@ -170,13 +236,13 @@ export const loadSessionsAction = async (
         sessions: uniqueSessions,
         hasMoreSessions: response.hasMore,
         sessionsPage: sessionsPage + 1,
-        sessionsLoading: false,
+        isLoading: false,
       };
     });
   } catch (error: any) {
-    set({ sessionsLoading: false });
+    set({ isLoading: false });
     const errorMessage = await handleApiError(error, 'load sessions');
-    set({ sessionsError: errorMessage });
+    set({ error: errorMessage });
   }
 };
 
@@ -281,7 +347,118 @@ export const unstarSessionAction = async (
   }
 };
 
+// Message management actions
 export const sendMessageAction = async (
+  data: SendMessageRequest & {
+    sessionId: string;
+    responseFormat?: 'json' | 'text'; // Specify expected response format
+    systemPrompt?: string; // Optional custom system prompt
+  },
+  set: SetState,
+  get: GetState,
+): Promise<ChatMessage> => {
+  set({ isSending: true, error: null });
+
+  try {
+    const token = getAuthToken();
+    const { currentSession } = get();
+
+    // Use provided sessionId or current session
+    const targetSessionId = data.sessionId || currentSession?.id;
+
+    if (!targetSessionId) {
+      throw new Error('No active session found');
+    }
+
+    // Create optimistic user message for immediate UI feedback
+    const optimisticUserMessage: ChatMessage = {
+      id: `temp-user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      sessionId: targetSessionId,
+      user_id: '',
+      content: data.content,
+      role: 'user',
+      status: 'pending',
+      message_type: 'text',
+      created_at: new Date().toISOString(),
+      updated_at: null,
+      completed_at: null,
+      regenerated_at: null,
+      attachments: data.attachments || [],
+      function_calls: [],
+      tokens_used: 0,
+      parent_message_id: null,
+      thread_id: null,
+      feedback_score: null,
+      feedback_text: null,
+      is_pinned: false,
+      is_hidden: false,
+      model_name: null,
+      generation_config: {},
+      temperature: null,
+      is_flagged: false,
+      moderation_score: null,
+      metadata: {},
+    };
+
+    // Add optimistic user message to state if this is the current session
+    if (currentSession?.id === targetSessionId) {
+      set((state: any) => ({
+        currentMessages: [...state.currentMessages, optimisticUserMessage],
+      }));
+    }
+
+    // Call non-streaming API endpoint - returns both user and AI messages
+    const response = await chatService.sendMessage(
+      {
+        ...data,
+        sessionId: targetSessionId,
+        responseFormat: data.responseFormat,
+        systemPrompt: data.systemPrompt,
+      },
+      token,
+    );
+
+    // Response contains: { userMessage: ChatMessage, aiMessage: ChatMessage }
+    const { userMessage, aiMessage } = response;
+
+    // Update state with actual messages from server
+    if (currentSession?.id === targetSessionId) {
+      set((state: any) => ({
+        currentMessages: [
+          // Remove optimistic message and add real messages
+          ...state.currentMessages.filter(
+            (msg: ChatMessage) => msg.id !== optimisticUserMessage.id,
+          ),
+          userMessage,
+          aiMessage,
+        ],
+        isSending: false,
+      }));
+    } else {
+      set({ isSending: false });
+    }
+
+    // Return the AI message as the primary response
+    return aiMessage;
+  } catch (error: any) {
+    // Remove optimistic message on error
+    const { currentSession } = get();
+    set((state: any) => ({
+      currentMessages: state.currentMessages.filter(
+        (msg: ChatMessage) =>
+          !msg.id.startsWith('temp-user-') ||
+          msg.sessionId !== currentSession?.id,
+      ),
+      isSending: false,
+    }));
+
+    const errorMessage = await handleApiError(error, 'send message');
+    set({ error: errorMessage });
+    throw error;
+  }
+};
+
+export const sendMessageStreamAction = async (
   data: SendMessageRequest,
   onToken: ((token: string) => void) | undefined,
   set: SetState,
@@ -516,12 +693,13 @@ export const submitMessageFeedbackAction = async (
   }
 };
 
+// Search actions
 export const searchSessionsAction = async (
   query: string,
   set: SetState,
   get: GetState,
 ): Promise<void> => {
-  set({ sessionsLoading: true, sessionsError: null });
+  set({ isLoading: true, error: null });
 
   try {
     const token = getAuthToken();
@@ -530,12 +708,12 @@ export const searchSessionsAction = async (
     set({
       sessions: response.sessions,
       hasMoreSessions: response.hasMore,
-      sessionsLoading: false,
+      isLoading: false,
     });
   } catch (error: any) {
-    set({ sessionsLoading: false });
+    set({ isLoading: false });
     const errorMessage = await handleApiError(error, 'search sessions');
-    set({ sessionsError: errorMessage });
+    set({ error: errorMessage });
   }
 };
 
@@ -569,6 +747,7 @@ export const searchMessagesAction = async (
   }
 };
 
+// Message interaction handlers
 export const handleCopyMessageAction = async (
   messageText: string,
 ): Promise<void> => {

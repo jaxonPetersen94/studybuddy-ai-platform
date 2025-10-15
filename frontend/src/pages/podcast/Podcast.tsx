@@ -28,7 +28,7 @@ const Podcast: React.FC = () => {
     isSidebarOpen,
     loadSessions,
     setSidebarOpen,
-    createSessionAndSend,
+    createSessionAndSendMessageStream,
     setError,
   } = useChatStore();
 
@@ -43,7 +43,7 @@ const Podcast: React.FC = () => {
 
     try {
       // Create session and send message with podcast context
-      const session = await createSessionAndSend({
+      const session = await createSessionAndSendMessageStream({
         content: inputValue,
         title: `Podcast: ${inputValue.slice(0, 50)}${
           inputValue.length > 50 ? '...' : ''

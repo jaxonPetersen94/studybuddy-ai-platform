@@ -1,0 +1,136 @@
+import React, { useState, useEffect } from 'react';
+import { SquareStack } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import ChatInput from '../../components/chat/ChatInput';
+import SidebarComponent from '../../components/layout/Sidebar';
+import SessionList from '../../components/chat/SessionList';
+import FlashCard from '../../components/flashcards/FlashCard';
+import { useChatStore } from '../../stores/chat/ChatStore';
+
+const NewFlashCards: React.FC = () => {
+  const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
+
+  const {
+    sessions,
+    isSidebarOpen,
+    loadSessions,
+    setSidebarOpen,
+    setError,
+    createSessionAndSendMessage,
+    flashcardsInput,
+    setFlashcardsInput,
+  } = useChatStore();
+
+  useEffect(() => {
+    loadSessions(true, 'flashcards');
+  }, [loadSessions]);
+
+  const handleGenerateFlashcards = async () => {
+    if (!flashcardsInput.trim() || isLoading) return;
+
+    setIsLoading(true);
+
+    try {
+      const { session } = await createSessionAndSendMessage({
+        content: flashcardsInput,
+        title: `Flash Cards: ${flashcardsInput.slice(0, 50)}${
+          flashcardsInput.length > 50 ? '...' : ''
+        }`,
+        session_type: 'flashcards',
+        subject: 'flashcards',
+        quickAction: 'flashcards',
+        responseFormat: 'json',
+        systemPrompt: `
+You are a flashcard generator. The user will provide a topic in their message. Respond ONLY with a valid JSON object matching this structure:
+{
+  "flashcards": [
+    { "front": "question or term", "back": "answer or definition" }
+  ]
+}
+
+Rules:
+- Do NOT include any text before or after the JSON.
+- Do NOT include Markdown formatting, code blocks, or explanations.
+- Generate 8–12 concise, educational flashcards about the EXACT topic the user specifies in their message.
+- The flashcards MUST be directly related to what the user asked for.
+`,
+      });
+
+      setFlashcardsInput('');
+      navigate(`/flashcards/${session.id}`);
+    } catch (error) {
+      console.error('Error generating flashcards:', error);
+      setError(
+        error instanceof Error
+          ? error.message
+          : 'Failed to generate flashcards',
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSessionClick = (sessionId: string) =>
+    navigate(`/flashcards/${sessionId}`);
+
+  return (
+    <div className="min-h-[calc(100vh-69px)] flex flex-col">
+      <SidebarComponent
+        title="Flashcard History"
+        isOpen={isSidebarOpen}
+        onToggle={() => setSidebarOpen(!isSidebarOpen)}
+        headerHeight={69}
+      >
+        <SessionList
+          sessions={sessions}
+          onNewChat={() => setFlashcardsInput('')}
+          onSessionClick={handleSessionClick}
+          newChatButtonEnabled={false}
+        />
+      </SidebarComponent>
+
+      <div className="flex-1 flex items-center justify-center p-6">
+        <div className="w-full max-w-2xl">
+          <FlashCard className="mb-5">
+            <div className="flex justify-center mb-4">
+              <SquareStack className="w-16 h-16 text-secondary" />
+            </div>
+
+            {isLoading ? (
+              <div className="flex flex-col items-center justify-center min-h-[200px]">
+                <span className="loading loading-spinner loading-lg text-primary"></span>
+                <p className="text-base-content/70 mt-4">
+                  Creating your flash cards...
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="flex flex-col items-center text-center">
+                  <h1 className="text-3xl lg:text-4xl font-bold text-base-content mb-3 tracking-tight select-text">
+                    Create Your Flash Cards
+                  </h1>
+                </div>
+
+                <p className="text-base text-center text-base-content/70 mb-8 max-w-2xl mx-auto select-text">
+                  Describe what you'd like to study and we'll generate
+                  personalized flashcards powered by AI.
+                </p>
+
+                <ChatInput
+                  value={flashcardsInput}
+                  onChange={setFlashcardsInput}
+                  onSend={handleGenerateFlashcards}
+                  placeholder="What topic should we create flash cards for?"
+                  disabled={isLoading}
+                />
+              </>
+            )}
+          </FlashCard>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default NewFlashCards;

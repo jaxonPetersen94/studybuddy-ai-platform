@@ -185,3 +185,9 @@ export interface MessageFeedbackRequest {
   type: 'like' | 'dislike';
   feedback?: string;
 }
+
+export interface Flashcard {
+  id: string;
+  front: string;
+  back: string;
+}

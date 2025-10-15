@@ -10,43 +10,52 @@ import type {
   RegenerateMessageRequest,
   SessionType,
 } from '../../types/chatTypes';
-import { QuickAction } from '../../types/uiTypes';
 import * as actions from './ChatActions';
 
 interface ChatStore {
-  // Current session state
-  currentSession: ChatSession | null;
-  currentMessages: ChatMessage[];
-  hasStartedChat: boolean;
-
-  // Chat sessions management
+  /** -------------------- State -------------------- */
+  // Sessions
   sessions: ChatSession[];
-  sessionsLoading: boolean;
-  sessionsError: string | null;
+  currentSession: ChatSession | null;
 
-  // UI state
-  isTyping: boolean;
-  selectedSubject: string | null;
-  selectedAction: QuickAction | null;
+  // Flashcards
+  flashcardsInput: string;
+  isFlashcardsFlipped: boolean;
+  currentFlashcardIndex: number;
+
+  // Chat
   userText: string;
-  isSidebarOpen: boolean;
+  isTyping: boolean;
+  hasStartedChat: boolean;
+  currentMessages: ChatMessage[];
 
-  // Loading states
-  isLoading: boolean;
-  isSending: boolean;
-
-  // Error state
-  error: string | null;
-
-  // Pagination state
+  // Pagination
   hasMoreMessages: boolean;
   hasMoreSessions: boolean;
   messagesPage: number;
   sessionsPage: number;
 
-  // Session management actions
+  // UI
+  isSidebarOpen: boolean;
+
+  // Loading/Error
+  isLoading: boolean;
+  isSending: boolean;
+  error: string | null;
+
+  /** -------------------- Session Actions -------------------- */
   createSession: (data?: CreateSessionRequest) => Promise<ChatSession>;
-  createSessionAndSend: (
+  createSessionAndSendMessage: (
+    data: SendMessageRequest & {
+      title?: string;
+      session_type?: SessionType;
+      subject?: string;
+      quickAction?: string;
+      responseFormat?: 'json' | 'text';
+      systemPrompt?: string;
+    },
+  ) => Promise<{ session: ChatSession; message: ChatMessage }>;
+  createSessionAndSendMessageStream: (
     data: SendMessageRequest & {
       title?: string;
       session_type?: SessionType;
@@ -64,8 +73,21 @@ interface ChatStore {
   starSession: (sessionId: string) => Promise<void>;
   unstarSession: (sessionId: string) => Promise<void>;
 
-  // Message management actions
+  /** -------------------- Flashcard Actions -------------------- */
+  setFlashcardsInput: (text: string) => void;
+  setCurrentFlashcardIndex: (index: number) => void;
+  setIsFlashcardsFlipped: (flipped: boolean) => void;
+  resetFlashcardsState: () => void;
+
+  /** -------------------- Message Actions -------------------- */
   sendMessage: (
+    data: SendMessageRequest & {
+      sessionId: string;
+      responseFormat?: 'json' | 'text';
+      systemPrompt?: string;
+    },
+  ) => Promise<ChatMessage>;
+  sendMessageStream: (
     data: SendMessageRequest,
     onToken?: (token: string) => void,
   ) => Promise<ChatMessage>;
@@ -74,27 +96,25 @@ interface ChatStore {
   regenerateMessage: (data: RegenerateMessageRequest) => Promise<void>;
   submitMessageFeedback: (data: MessageFeedbackRequest) => Promise<void>;
 
-  // Search functionality
+  /** -------------------- Search Actions -------------------- */
   searchSessions: (query: string) => Promise<void>;
   searchMessages: (query: string) => Promise<void>;
 
-  // UI actions
+  /** -------------------- UI Actions -------------------- */
   startChat: () => void;
   resetChat: () => void;
   setUserText: (text: string) => void;
-  setSelectedSubject: (subjectId: string | null) => void;
-  setSelectedAction: (action: QuickAction | null) => void;
   setIsTyping: (typing: boolean) => void;
   setSidebarOpen: (isOpen: boolean) => void;
   toggleSidebar: () => void;
 
-  // Message interaction handlers
+  /** -------------------- Message Interaction -------------------- */
   handleCopyMessage: (messageText: string) => Promise<void>;
   handleLikeMessage: (messageId: string) => Promise<void>;
   handleDislikeMessage: (messageId: string) => Promise<void>;
   handleRegenerateMessage: (messageId: string) => Promise<void>;
 
-  // State management utilities
+  /** -------------------- Utilities -------------------- */
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   clearError: () => void;
@@ -103,30 +123,32 @@ interface ChatStore {
 export const useChatStore = create<ChatStore>()(
   persist(
     (set, get) => ({
-      // Initial state
-      currentSession: null,
-      currentMessages: [],
-      hasStartedChat: false,
+      /** -------------------- Initial State -------------------- */
       sessions: [],
-      sessionsLoading: false,
-      sessionsError: null,
-      isTyping: false,
-      selectedSubject: null,
-      selectedAction: null,
+      currentSession: null,
+      flashcardsInput: '',
+      isFlashcardsFlipped: false,
+      currentFlashcardIndex: 0,
+      currentFlashcards: [],
       userText: '',
-      isSidebarOpen: false,
-      isLoading: false,
-      isSending: false,
-      error: null,
+      isTyping: false,
+      hasStartedChat: false,
+      currentMessages: [],
       hasMoreMessages: true,
       hasMoreSessions: true,
       messagesPage: 1,
       sessionsPage: 1,
+      isSidebarOpen: false,
+      isLoading: false,
+      isSending: false,
+      error: null,
 
-      // Session management actions
+      /** -------------------- Session Actions -------------------- */
       createSession: (data) => actions.createSessionAction(data, set, get),
-      createSessionAndSend: (data) =>
-        actions.createSessionAndSendAction(data, set, get),
+      createSessionAndSendMessage: (data) =>
+        actions.createSessionAndSendMessageAction(data, set, get),
+      createSessionAndSendMessageStream: (data) =>
+        actions.createSessionAndSendMessageStreamAction(data, set, get),
       loadSession: (sessionId) =>
         actions.loadSessionAction(sessionId, set, get),
       loadSessions: (refresh = false, sessionType) =>
@@ -140,9 +162,23 @@ export const useChatStore = create<ChatStore>()(
       unstarSession: (sessionId) =>
         actions.unstarSessionAction(sessionId, set, get),
 
-      // Message management actions
-      sendMessage: (data, onToken) =>
-        actions.sendMessageAction(data, onToken, set, get),
+      /** -------------------- Flashcard Actions -------------------- */
+      setFlashcardsInput: (text) => set({ flashcardsInput: text }),
+      setIsFlashcardsFlipped: (flipped) =>
+        set({ isFlashcardsFlipped: flipped }),
+      setCurrentFlashcardIndex: (index) =>
+        set({ currentFlashcardIndex: index }),
+      resetFlashcardsState: () =>
+        set({
+          flashcardsInput: '',
+          currentFlashcardIndex: 0,
+          isFlashcardsFlipped: false,
+        }),
+
+      /** -------------------- Message Actions -------------------- */
+      sendMessage: (data) => actions.sendMessageAction(data, set, get),
+      sendMessageStream: (data, onToken) =>
+        actions.sendMessageStreamAction(data, onToken, set, get),
       loadMessages: (sessionId, refresh = false) =>
         actions.loadMessagesAction(sessionId, refresh, set, get),
       loadMoreMessages: async () => {
@@ -155,19 +191,17 @@ export const useChatStore = create<ChatStore>()(
       submitMessageFeedback: (data) =>
         actions.submitMessageFeedbackAction(data, set, get),
 
-      // Search functionality
+      /** -------------------- Search Actions -------------------- */
       searchSessions: (query) => actions.searchSessionsAction(query, set, get),
       searchMessages: (query) => actions.searchMessagesAction(query, set, get),
 
-      // UI actions
+      /** -------------------- UI Actions -------------------- */
       startChat: () => set({ hasStartedChat: true }),
       resetChat: () =>
         set({
           currentSession: null,
           currentMessages: [],
           hasStartedChat: false,
-          selectedSubject: null,
-          selectedAction: null,
           userText: '',
           isTyping: false,
           error: null,
@@ -175,14 +209,12 @@ export const useChatStore = create<ChatStore>()(
           hasMoreMessages: true,
         }),
       setUserText: (text) => set({ userText: text }),
-      setSelectedSubject: (subjectId) => set({ selectedSubject: subjectId }),
-      setSelectedAction: (action) => set({ selectedAction: action }),
       setIsTyping: (typing) => set({ isTyping: typing }),
       setSidebarOpen: (isOpen) => set({ isSidebarOpen: isOpen }),
       toggleSidebar: () =>
         set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
 
-      // Message interaction handlers
+      /** -------------------- Message Interaction -------------------- */
       handleCopyMessage: (messageText) =>
         actions.handleCopyMessageAction(messageText),
       handleLikeMessage: (messageId) =>
@@ -192,7 +224,7 @@ export const useChatStore = create<ChatStore>()(
       handleRegenerateMessage: (messageId) =>
         actions.handleRegenerateMessageAction(messageId, get),
 
-      // State management utilities
+      /** -------------------- Utilities -------------------- */
       setLoading: (loading) => set({ isLoading: loading }),
       setError: (error) => set({ error }),
       clearError: () => set({ error: null }),
@@ -202,8 +234,6 @@ export const useChatStore = create<ChatStore>()(
       partialize: (state) => ({
         sessions: state.sessions,
         currentSession: state.currentSession,
-        selectedSubject: state.selectedSubject,
-        selectedAction: state.selectedAction,
         isSidebarOpen: state.isSidebarOpen,
       }),
     },

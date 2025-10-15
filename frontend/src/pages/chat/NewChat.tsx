@@ -11,13 +11,13 @@ const NewChat: React.FC = () => {
 
   const {
     sessions,
+    isSidebarOpen,
     userText,
     isSending,
-    isSidebarOpen,
     loadSessions,
     setUserText,
     setSidebarOpen,
-    createSessionAndSend,
+    createSessionAndSendMessageStream,
   } = useChatStore();
 
   useEffect(() => {
@@ -29,7 +29,7 @@ const NewChat: React.FC = () => {
 
     try {
       // Create new session and send message
-      const newSession = await createSessionAndSend({
+      const newSession = await createSessionAndSendMessageStream({
         content: userText.trim(),
         title:
           userText.trim().substring(0, 50) +

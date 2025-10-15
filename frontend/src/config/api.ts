@@ -63,6 +63,7 @@ export const API_ENDPOINTS = {
       `${buildPath('chats', 'sessions')}/${sessionId}/messages`,
     MESSAGE_BY_ID: (messageId: string) =>
       `${buildPath('chats', 'messages')}/${messageId}`,
+    SEND_MESSAGE: buildPath('chats', 'messages/send'),
     STREAM_MESSAGE: buildPath('chats', 'messages/stream'),
     REGENERATE_MESSAGE: (messageId: string) =>
       `${buildPath('chats', 'messages')}/${messageId}/regenerate`,

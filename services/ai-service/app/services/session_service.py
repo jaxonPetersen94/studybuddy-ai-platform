@@ -46,7 +46,8 @@ class SessionService:
                 is_pinned=session_data.get("is_pinned", session_data.get("is_starred", False)),
                 is_archived=session_data.get("is_archived", False),
                 tags=session_data.get("tags", []),
-                status=session_data.get("status", "active")
+                status=session_data.get("status", "active"),
+                session_type=session_data.get("session_type")
             )
             
             # Convert to dict for MongoDB insertion

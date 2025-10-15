@@ -19,7 +19,7 @@ const Presentation: React.FC = () => {
     isSidebarOpen,
     loadSessions,
     setSidebarOpen,
-    createSessionAndSend,
+    createSessionAndSendMessageStream,
     setError,
   } = useChatStore();
 
@@ -38,7 +38,7 @@ const Presentation: React.FC = () => {
 
     try {
       // Create session and send message with presentation context
-      const session = await createSessionAndSend({
+      const session = await createSessionAndSendMessageStream({
         content: inputValue,
         title: `Presentation: ${inputValue.slice(0, 50)}${
           inputValue.length > 50 ? '...' : ''

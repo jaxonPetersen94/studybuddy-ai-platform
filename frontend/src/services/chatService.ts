@@ -12,7 +12,6 @@ import type {
   UpdateSessionRequest,
   RegenerateMessageRequest,
   MessageFeedbackRequest,
-  SessionType,
   GetSessionsRequest,
 } from '../types/chatTypes';
 import type { ApiResponse } from '../types/apiTypes';
@@ -204,7 +203,91 @@ export const chatService = {
     return this.updateSession(sessionId, { isStarred: false }, token);
   },
 
-  // Message Management - Streaming Only
+  async sendMessage(
+    data: SendMessageRequest & {
+      sessionId: string;
+      responseFormat?: 'json' | 'text';
+      systemPrompt?: string;
+    },
+    token: string,
+  ): Promise<{ userMessage: ChatMessage; aiMessage: ChatMessage }> {
+    try {
+      const requestData: Record<string, any> = {
+        content: data.content,
+        session_id: data.sessionId,
+      };
+
+      if (data.attachments && data.attachments.length > 0) {
+        requestData.attachments = data.attachments;
+      }
+
+      if (data.responseFormat) {
+        requestData.response_format = data.responseFormat;
+      }
+
+      if (data.systemPrompt) {
+        requestData.system_prompt = data.systemPrompt;
+      }
+
+      if (data.modelConfig) {
+        requestData.model_config = data.modelConfig;
+      }
+
+      // Include subject and quickAction if provided
+      if (data.subject) {
+        requestData.subject = data.subject;
+      }
+
+      if (data.quickAction) {
+        requestData.quick_action = data.quickAction;
+      }
+
+      const response = await apiClient.post<
+        ApiResponse<{ user_message: ChatMessage; ai_message: ChatMessage }>
+      >(API_ENDPOINTS.CHAT.SEND_MESSAGE, requestData, token);
+
+      return {
+        userMessage: response.data.user_message,
+        aiMessage: response.data.ai_message,
+      };
+    } catch (error: any) {
+      if (error.status === 404) {
+        const apiError: ApiError = {
+          code: 'SESSION_NOT_FOUND',
+          message: 'Chat session not found',
+          details: { status: 404 },
+        };
+        throw apiError;
+      }
+
+      if (error.status === 429) {
+        const apiError: ApiError = {
+          code: 'RATE_LIMIT_EXCEEDED',
+          message: 'Too many message attempts. Please try again later.',
+          details: { status: 429 },
+        };
+        throw apiError;
+      }
+
+      if (error.status === 400) {
+        const apiError: ApiError = {
+          code: 'INVALID_MESSAGE_DATA',
+          message:
+            error.message || 'Invalid message data. Please check your input.',
+          details: { status: 400 },
+        };
+        throw apiError;
+      }
+
+      const apiError: ApiError = {
+        code: error.code || 'UNKNOWN_ERROR',
+        message: error.message || 'Failed to send message',
+        details: { status: error.status, originalError: error },
+      };
+      throw apiError;
+    }
+  },
+
   async sendMessageStream(
     data: SendMessageRequest,
     token: string,

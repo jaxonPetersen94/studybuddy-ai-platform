@@ -23,7 +23,7 @@ const Quiz: React.FC = () => {
     isSidebarOpen,
     loadSessions,
     setSidebarOpen,
-    createSessionAndSend,
+    createSessionAndSendMessageStream,
     setError,
   } = useChatStore();
 
@@ -59,7 +59,7 @@ const Quiz: React.FC = () => {
 
     try {
       // Create session and send message with quiz context
-      const session = await createSessionAndSend({
+      const session = await createSessionAndSendMessageStream({
         content: inputValue,
         title: `Quiz: ${inputValue.slice(0, 50)}${
           inputValue.length > 50 ? '...' : ''

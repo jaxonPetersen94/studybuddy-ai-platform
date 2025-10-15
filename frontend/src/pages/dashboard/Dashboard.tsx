@@ -61,9 +61,9 @@ const Dashboard: React.FC = () => {
 
   const handleStudyMethodClick = (methodId: string) => {
     if (methodId === 'chat') {
-      navigate('/new');
+      navigate('/new-chat');
     } else if (methodId === 'flashcards') {
-      navigate('/flashcards');
+      navigate('/new-flashcards');
     } else if (methodId === 'quiz') {
       navigate('/quiz');
     } else if (methodId === 'presentation') {
