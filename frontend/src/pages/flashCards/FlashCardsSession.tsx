@@ -10,6 +10,7 @@ import { Flashcard } from '../../types/chatTypes';
 const FlashCardsSession: React.FC = () => {
   const { sessionId } = useParams<{ sessionId: string }>();
   const [currentFlashcards, setCurrentFlashcards] = useState<Flashcard[]>([]);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const navigate = useNavigate();
 
   const {
@@ -89,19 +90,47 @@ const FlashCardsSession: React.FC = () => {
 
   const currentCard = currentFlashcards[currentFlashcardIndex];
 
-  const handleFlipCard = () => setIsFlashcardsFlipped(!isFlashcardsFlipped);
+  const handleFlipCard = () => {
+    if (!isTransitioning) {
+      setIsFlashcardsFlipped(!isFlashcardsFlipped);
+    }
+  };
 
   const handleNextCard = () => {
-    if (currentFlashcardIndex < currentFlashcards.length - 1) {
-      setCurrentFlashcardIndex(currentFlashcardIndex + 1);
+    if (isTransitioning) return;
+
+    if (!isFlashcardsFlipped) {
+      // If the card is showing front, flip it first
+      setIsFlashcardsFlipped(true);
+    } else if (currentFlashcardIndex < currentFlashcards.length - 1) {
+      // If already flipped, flip back first, then change card at midpoint
+      setIsTransitioning(true);
       setIsFlashcardsFlipped(false);
+
+      // Change card at midpoint of flip animation (300ms = half of 600ms)
+      setTimeout(() => {
+        setCurrentFlashcardIndex(currentFlashcardIndex + 1);
+        setIsTransitioning(false);
+      }, 300);
     }
   };
 
   const handlePrevCard = () => {
-    if (currentFlashcardIndex > 0) {
-      setCurrentFlashcardIndex(currentFlashcardIndex - 1);
+    if (isTransitioning || currentFlashcardIndex === 0) return;
+
+    setIsTransitioning(true);
+
+    // If showing back, flip to front first
+    if (isFlashcardsFlipped) {
       setIsFlashcardsFlipped(false);
+      setTimeout(() => {
+        setCurrentFlashcardIndex(currentFlashcardIndex - 1);
+        setIsTransitioning(false);
+      }, 300);
+    } else {
+      // If showing front, just change card
+      setCurrentFlashcardIndex(currentFlashcardIndex - 1);
+      setIsTransitioning(false);
     }
   };
 
@@ -172,7 +201,7 @@ const FlashCardsSession: React.FC = () => {
             <button
               className="btn btn-outline btn-primary"
               onClick={handlePrevCard}
-              disabled={currentFlashcardIndex === 0}
+              disabled={currentFlashcardIndex === 0 || isTransitioning}
             >
               <ChevronLeft className="w-5 h-5" />
               Previous
@@ -181,6 +210,7 @@ const FlashCardsSession: React.FC = () => {
             <button
               className="btn btn-outline btn-secondary"
               onClick={handleFlipCard}
+              disabled={isTransitioning}
             >
               <RotateCw className="w-5 h-5" />
               Flip
@@ -189,7 +219,10 @@ const FlashCardsSession: React.FC = () => {
             <button
               className="btn btn-outline btn-primary"
               onClick={handleNextCard}
-              disabled={currentFlashcardIndex === currentFlashcards.length - 1}
+              disabled={
+                currentFlashcardIndex === currentFlashcards.length - 1 ||
+                isTransitioning
+              }
             >
               Next
               <ChevronRight className="w-5 h-5" />

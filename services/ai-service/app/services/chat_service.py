@@ -132,8 +132,6 @@ class ChatService:
                 "response_format": response_format
             }
 
-            logger.info(f"[generate_response] Using chat_completion for user {user_id}, session {session_id}")
-
             # 6. Get AI response (this is the slowest part - can't be parallelized)
             try:
                 ai_result = await self.ai_service.chat_completion(ai_request)
@@ -181,7 +179,7 @@ class ChatService:
                 update_session_task
             )
 
-            logger.info(f"✅ Completed chat_completion for user {user_id}, session {session_id}")
+            logger.info(f"Completed chat_completion for user {user_id}, session {session_id}")
 
             return {
                 "user_message": user_message,

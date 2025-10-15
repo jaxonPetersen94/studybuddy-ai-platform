@@ -92,30 +92,34 @@ Rules:
 
       <div className="flex-1 flex items-center justify-center p-6">
         <div className="w-full max-w-2xl">
-          <FlashCard className="mb-5">
-            <div className="flex justify-center mb-4">
+          <FlashCard className="mb-5" showLinedBackground>
+            <div className="flex justify-center">
               <SquareStack className="w-16 h-16 text-secondary" />
             </div>
 
             {isLoading ? (
-              <div className="flex flex-col items-center justify-center min-h-[200px]">
-                <span className="loading loading-spinner loading-lg text-primary"></span>
-                <p className="text-base-content/70 mt-4">
-                  Creating your flash cards...
-                </p>
-              </div>
+              <>
+                <div className="flex flex-col items-center justify-center mt-4">
+                  <span className="loading loading-spinner loading-lg text-primary"></span>
+                  <p className="text-base-content/70 mt-4">
+                    Creating your flash cards...
+                  </p>
+                </div>
+
+                <br></br>
+              </>
             ) : (
               <>
                 <div className="flex flex-col items-center text-center">
                   <h1 className="text-3xl lg:text-4xl font-bold text-base-content mb-3 tracking-tight select-text">
                     Create Your Flash Cards
                   </h1>
-                </div>
 
-                <p className="text-base text-center text-base-content/70 mb-8 max-w-2xl mx-auto select-text">
-                  Describe what you'd like to study and we'll generate
-                  personalized flashcards powered by AI.
-                </p>
+                  <p className="text-base text-center text-base-content/70 max-w-2xl mx-auto select-text">
+                    Describe what you'd like to study and we'll generate
+                    personalized flashcards powered by AI.
+                  </p>
+                </div>
 
                 <ChatInput
                   value={flashcardsInput}
