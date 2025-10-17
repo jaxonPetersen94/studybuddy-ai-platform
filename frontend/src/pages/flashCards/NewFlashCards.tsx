@@ -34,7 +34,7 @@ const NewFlashCards: React.FC = () => {
     try {
       const { session } = await createSessionAndSendMessage({
         content: flashcardsInput,
-        title: `Flash Cards: ${flashcardsInput.slice(0, 50)}${
+        title: `${flashcardsInput.slice(0, 50)}${
           flashcardsInput.length > 50 ? '...' : ''
         }`,
         session_type: 'flashcards',

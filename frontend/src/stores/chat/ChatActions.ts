@@ -75,14 +75,13 @@ export const createSessionAndSendMessageAction = async (
       token,
     );
 
-    // Update state with new session (TODO: might not need- duplicate state set?)
-    set((state: any) => ({
+    // Only update current session, not the sessions list yet
+    set({
       currentSession: newSession,
-      sessions: [newSession, ...state.sessions],
       hasStartedChat: true,
       currentMessages: [],
       isLoading: false,
-    }));
+    });
 
     // Send the non-streaming message
     const message = await sendMessageAction(
@@ -93,6 +92,11 @@ export const createSessionAndSendMessageAction = async (
       set,
       get,
     );
+
+    // NOW add it to sessions list after everything is complete
+    set((state: any) => ({
+      sessions: [newSession, ...state.sessions],
+    }));
 
     return { session: newSession, message };
   } catch (error: any) {

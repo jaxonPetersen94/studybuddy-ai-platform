@@ -51,12 +51,9 @@ class ChatService:
         system_prompt: Optional[str] = None,
         metadata: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
-        """
-        Generate a non-streaming AI response for a user message using chat_completion.
-        Optimized for speed with parallel operations.
-        """
+        """Generate a non-streaming AI response"""
         try:
-            # 1. Validate or create session (unchanged)
+            # 1. Validate or create session
             if session_id:
                 session = await self.session_service.get_session(session_id, user_id)
                 if not session:
@@ -69,60 +66,42 @@ class ChatService:
                 session = await self.session_service.create_session(user_id, session_data)
                 session_id = session["id"]
 
-            # 2. Create user message
-            user_message_data = {
-                "session_id": session_id,
+            # 2. Get conversation history (excludes current message since it's not saved yet)
+            conversation_history = await self._get_conversation_context(session_id, user_id)
+            logger.info(f"📚 Conversation history loaded: {len(conversation_history)} messages")
+
+            # 3. Process attachments if any
+            processed_attachments = []
+            if attachments:
+                attachment_tasks = [
+                    self.attachment_service.get_attachment(att_id, user_id) 
+                    for att_id in attachments
+                ]
+                processed_attachments = [
+                    att for att in await asyncio.gather(*attachment_tasks) 
+                    if att is not None
+                ]
+
+            # 4. Build the messages array for AI
+            messages = []
+            
+            # Add system prompt first
+            if system_prompt:
+                messages.append({"role": "system", "content": system_prompt})
+            
+            # Add conversation history
+            messages.extend(conversation_history)
+            
+            # Add current user message (from function parameter, not database)
+            messages.append({
                 "role": "user",
                 "content": message_content,
-                "status": "completed"
-            }
-            if attachments:
-                user_message_data["attachments"] = attachments
-            if metadata:
-                user_message_data["metadata"] = metadata
-
-            # 3. PARALLEL: Create user message, get conversation history, process attachments
-            user_message_task = self.message_service.create_message(user_id, user_message_data)
-            conversation_task = self._get_conversation_context(session_id, user_id)
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            })
             
-            attachment_tasks = []
-            if attachments:
-                for attachment_id in attachments:
-                    attachment_tasks.append(
-                        self.attachment_service.get_attachment(attachment_id, user_id)
-                    )
-            
-            # Wait for all parallel operations
-            results = await asyncio.gather(
-                user_message_task,
-                conversation_task,
-                *attachment_tasks
-            )
-            
-            user_message = results[0]
-            conversation_history = results[1]
-            processed_attachments = [att for att in results[2:] if att is not None]
+            logger.info(f"📊 Total messages for AI: {len(messages)}")
 
-            # 4. Create placeholder AI message
-            ai_message_data = {
-                "session_id": session_id,
-                "role": "assistant",
-                "content": "",
-                "status": "generating"
-            }
-            ai_message = await self.message_service.create_message(user_id, ai_message_data)
-            ai_message_id = ai_message["id"]
-
-            # 5. Prepare AI request with system prompt
-            messages = conversation_history.copy()
-            
-            # Add system prompt as first message if provided
-            if system_prompt:
-                messages.insert(0, {
-                    "role": "system",
-                    "content": system_prompt
-                })
-
+            # 5. Call AI service
             ai_request = {
                 "messages": messages,
                 "attachments": processed_attachments,
@@ -131,64 +110,49 @@ class ChatService:
                 "session_id": session_id,
                 "response_format": response_format
             }
+            
+            ai_result = await self.ai_service.chat_completion(ai_request)
+            ai_response_content = ai_result.get("content", "")
 
-            # 6. Get AI response (this is the slowest part - can't be parallelized)
-            try:
-                ai_result = await self.ai_service.chat_completion(ai_request)
-                ai_response_content = ai_result.get("content", "")
-                function_calls = ai_result.get("function_calls", [])
-            except Exception as e:
-                await self.message_service.update_message(
-                    ai_message_id,
-                    user_id,
-                    {"status": "failed", "metadata": {"error": str(e)}}
-                )
-                raise
-
-            # 7. Prepare metadata
-            ai_metadata = {}
-            if function_calls:
-                ai_metadata["function_calls"] = function_calls
-            if response_format:
-                ai_metadata["response_format"] = response_format
-
-            update_data = {
+            # 6. NOW save both messages to database in parallel
+            user_message_data = {
+                "session_id": session_id,
+                "role": "user",
+                "content": message_content,
+                "status": "completed",
+                "attachments": attachments or [],
+                "metadata": metadata
+            }
+            
+            ai_message_data = {
+                "session_id": session_id,
+                "role": "assistant",
                 "content": ai_response_content,
                 "status": "completed",
                 "completed_at": datetime.now(timezone.utc).isoformat()
             }
-            if ai_metadata:
-                update_data["metadata"] = ai_metadata
-
-            # 8. PARALLEL: Update AI message and session activity
-            update_message_task = self.message_service.update_message(
-                ai_message_id,
-                user_id,
-                update_data
-            )
             
-            update_session_task = self.session_service.update_session(
+            # Save both messages in parallel
+            user_message, ai_message = await asyncio.gather(
+                self.message_service.create_message(user_id, user_message_data),
+                self.message_service.create_message(user_id, ai_message_data)
+            )
+
+            # 7. Update session
+            await self.session_service.update_session(
                 session_id,
                 user_id,
                 {"last_activity": datetime.now(timezone.utc).isoformat()}
             )
-            
-            # Wait for both updates
-            final_ai_message, _ = await asyncio.gather(
-                update_message_task,
-                update_session_task
-            )
-
-            logger.info(f"Completed chat_completion for user {user_id}, session {session_id}")
 
             return {
                 "user_message": user_message,
-                "ai_message": final_ai_message,
+                "ai_message": ai_message,
                 "session_id": session_id
             }
 
         except Exception as e:
-            logger.error(f"❌ Error generating response for user {user_id}: {str(e)}")
+            logger.error(f"❌ Error generating response: {str(e)}")
             raise
     
     async def stream_response(
