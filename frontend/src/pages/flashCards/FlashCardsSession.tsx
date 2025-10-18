@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight, RotateCw } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import SidebarComponent from '../../components/layout/Sidebar';
+import Drawer from '../../components/layout/Drawer';
 import SessionList from '../../components/chat/SessionList';
 import FlashCard from '../../components/flashcards/FlashCard';
 import { useChatStore } from '../../stores/chat/ChatStore';
@@ -11,6 +12,7 @@ const FlashCardsSession: React.FC = () => {
   const { sessionId } = useParams<{ sessionId: string }>();
   const [currentFlashcards, setCurrentFlashcards] = useState<Flashcard[]>([]);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [isLargeScreen, setIsLargeScreen] = useState(window.innerWidth >= 1024);
   const navigate = useNavigate();
 
   const {
@@ -88,6 +90,21 @@ const FlashCardsSession: React.FC = () => {
     loadSessions(true, 'flashcards');
   }, [loadSessions]);
 
+  // Handle screen resize
+  useEffect(() => {
+    const handleResize = () => {
+      const large = window.innerWidth >= 1024;
+      setIsLargeScreen(large);
+      // Close sidebar on mobile when transitioning from large to small screen
+      if (!large && isSidebarOpen) {
+        setSidebarOpen(false);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [isSidebarOpen, setSidebarOpen]);
+
   const currentCard = currentFlashcards[currentFlashcardIndex];
 
   const handleFlipCard = () => {
@@ -134,31 +151,57 @@ const FlashCardsSession: React.FC = () => {
     }
   };
 
-  const handleSessionClick = (sessionId: string) =>
+  const handleSessionClick = (sessionId: string) => {
+    // Close drawer on mobile when navigating to a session
+    if (!isLargeScreen) {
+      setSidebarOpen(false);
+    }
     navigate(`/flashcards/${sessionId}`);
+  };
 
   const handleNewSet = () => {
     resetFlashcardsState();
     navigate('/new-flashcards');
   };
 
+  const sessionListContent = (
+    <SessionList
+      sessions={sessions}
+      currentSessionId={sessionId}
+      onCreateNew={handleNewSet}
+      onSessionClick={handleSessionClick}
+      sessionType="flashcards"
+    />
+  );
+
   // Show loading state if flashcards not loaded yet
   if (!currentCard) {
     return (
       <div className="min-h-[calc(100vh-69px)] flex flex-col">
-        <SidebarComponent
-          title="Flashcard History"
-          isOpen={isSidebarOpen}
-          onToggle={() => setSidebarOpen(!isSidebarOpen)}
-          headerHeight={69}
-        >
-          <SessionList
-            sessions={sessions}
-            onCreateNew={handleNewSet}
-            onSessionClick={handleSessionClick}
-            sessionType="flashcards"
-          />
-        </SidebarComponent>
+        {/* Sidebar for large screens */}
+        {isLargeScreen && (
+          <SidebarComponent
+            title="Flashcard History"
+            isOpen={isSidebarOpen}
+            onToggle={() => setSidebarOpen(!isSidebarOpen)}
+            headerHeight={69}
+          >
+            {sessionListContent}
+          </SidebarComponent>
+        )}
+
+        {/* Drawer for small screens */}
+        {!isLargeScreen && (
+          <Drawer
+            isOpen={isSidebarOpen}
+            onClose={() => setSidebarOpen(false)}
+            onOpen={() => setSidebarOpen(true)}
+            headerHeight={69}
+            title="Flash Card History"
+          >
+            {sessionListContent}
+          </Drawer>
+        )}
 
         <div className="flex-1 flex items-center justify-center">
           <div className="loading loading-spinner loading-lg"></div>
@@ -169,23 +212,33 @@ const FlashCardsSession: React.FC = () => {
 
   return (
     <div className="min-h-[calc(100vh-69px)] flex flex-col">
-      <SidebarComponent
-        title="Flashcard History"
-        isOpen={isSidebarOpen}
-        onToggle={() => setSidebarOpen(!isSidebarOpen)}
-        headerHeight={69}
-      >
-        <SessionList
-          sessions={sessions}
-          currentSessionId={sessionId}
-          onCreateNew={handleNewSet}
-          onSessionClick={handleSessionClick}
-          sessionType="flashcards"
-        />
-      </SidebarComponent>
+      {/* Sidebar for large screens */}
+      {isLargeScreen && (
+        <SidebarComponent
+          title="Flashcard History"
+          isOpen={isSidebarOpen}
+          onToggle={() => setSidebarOpen(!isSidebarOpen)}
+          headerHeight={69}
+        >
+          {sessionListContent}
+        </SidebarComponent>
+      )}
+
+      {/* Drawer for small screens */}
+      {!isLargeScreen && (
+        <Drawer
+          isOpen={isSidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          onOpen={() => setSidebarOpen(true)}
+          headerHeight={69}
+          title="Flash Card History"
+        >
+          {sessionListContent}
+        </Drawer>
+      )}
 
       <div className="flex-1 flex flex-col justify-center items-center p-6">
-        <div className="w-full max-w-2xl space-y-6">
+        <div className="relative w-full max-w-2xl space-y-6">
           <div className="text-center">
             <p className="text-sm text-base-content/60">
               Card {currentFlashcardIndex + 1} of {currentFlashcards.length}

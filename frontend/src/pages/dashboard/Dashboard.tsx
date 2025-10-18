@@ -75,12 +75,12 @@ const Dashboard: React.FC = () => {
   };
 
   return (
-    <div className="min-h-[calc(100vh-69px)] flex flex-col">
+    <div className="flex flex-col min-h-[calc(100vh-69px)]">
       {/* Main Content */}
       <div className="flex-1 flex flex-col justify-center items-center py-12">
         <div className="max-w-5xl w-full px-6">
           {/* Header */}
-          <div className="text-center mb-12">
+          <div className="relative text-center mb-12">
             <h1 className="text-4xl lg:text-5xl font-bold text-base-content mb-4 tracking-tight">
               How would you like to{' '}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">

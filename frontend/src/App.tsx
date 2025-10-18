@@ -12,8 +12,8 @@ import ResetPassword from './pages/auth/ResetPassword';
 import ChatSession from './pages/chat/ChatSession';
 import NewChat from './pages/chat/NewChat';
 import Dashboard from './pages/dashboard/Dashboard';
-import NewFlashCards from './pages/flashCards/NewFlashCards';
 import FlashCardsSession from './pages/flashCards/FlashCardsSession';
+import NewFlashCards from './pages/flashCards/NewFlashCards';
 import Podcast from './pages/podcast/Podcast';
 import Presentation from './pages/presentation/Presentation';
 import NewQuiz from './pages/quiz/NewQuiz';
@@ -44,110 +44,104 @@ function App() {
     <div className="App relative min-h-screen" data-theme={currentTheme}>
       <Background />
 
-      {isAuthenticated && (
-        <div className="sticky top-0 z-50">
-          <Header />
-        </div>
-      )}
+      {isAuthenticated && <Header />}
 
-      <div className="relative z-10">
-        <Routes>
-          <Route path="/" element={<HomeRoute />} />
-          <Route path="/auth" element={<AuthForm />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password/:token" element={<ResetPassword />} />
+      <Routes>
+        <Route path="/" element={<HomeRoute />} />
+        <Route path="/auth" element={<AuthForm />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password/:token" element={<ResetPassword />} />
 
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            }
-          />
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
 
-          {/* FlashCards Routes */}
-          <Route
-            path="/new-flashcards"
-            element={
-              <ProtectedRoute>
-                <NewFlashCards />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/flashcards/:sessionId"
-            element={
-              <ProtectedRoute>
-                <FlashCardsSession />
-              </ProtectedRoute>
-            }
-          />
+        {/* FlashCards Routes */}
+        <Route
+          path="/new-flashcards"
+          element={
+            <ProtectedRoute>
+              <NewFlashCards />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/flashcards/:sessionId"
+          element={
+            <ProtectedRoute>
+              <FlashCardsSession />
+            </ProtectedRoute>
+          }
+        />
 
-          {/* Quiz Routes */}
-          <Route
-            path="/new-quiz"
-            element={
-              <ProtectedRoute>
-                <NewQuiz />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/quiz/:sessionId"
-            element={
-              <ProtectedRoute>
-                <QuizSession />
-              </ProtectedRoute>
-            }
-          />
+        {/* Quiz Routes */}
+        <Route
+          path="/new-quiz"
+          element={
+            <ProtectedRoute>
+              <NewQuiz />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/quiz/:sessionId"
+          element={
+            <ProtectedRoute>
+              <QuizSession />
+            </ProtectedRoute>
+          }
+        />
 
-          <Route
-            path="/new-chat"
-            element={
-              <ProtectedRoute>
-                <NewChat />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/chat/:sessionId"
-            element={
-              <ProtectedRoute>
-                <ChatSession />
-              </ProtectedRoute>
-            }
-          />
+        <Route
+          path="/new-chat"
+          element={
+            <ProtectedRoute>
+              <NewChat />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/chat/:sessionId"
+          element={
+            <ProtectedRoute>
+              <ChatSession />
+            </ProtectedRoute>
+          }
+        />
 
-          <Route
-            path="/presentation"
-            element={
-              <ProtectedRoute>
-                <Presentation />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/podcast"
-            element={
-              <ProtectedRoute>
-                <Podcast />
-              </ProtectedRoute>
-            }
-          />
+        <Route
+          path="/presentation"
+          element={
+            <ProtectedRoute>
+              <Presentation />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/podcast"
+          element={
+            <ProtectedRoute>
+              <Podcast />
+            </ProtectedRoute>
+          }
+        />
 
-          <Route
-            path="/user-settings"
-            element={
-              <ProtectedRoute>
-                <UserSettings />
-              </ProtectedRoute>
-            }
-          />
+        <Route
+          path="/user-settings"
+          element={
+            <ProtectedRoute>
+              <UserSettings />
+            </ProtectedRoute>
+          }
+        />
 
-          <Route path="*" element={<ErrorBoundary />} />
-        </Routes>
-      </div>
+        <Route path="*" element={<ErrorBoundary />} />
+      </Routes>
 
       <ToastContainer toasts={toasts} position="top-center" />
     </div>

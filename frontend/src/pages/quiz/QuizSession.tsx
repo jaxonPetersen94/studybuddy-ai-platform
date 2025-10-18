@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { CheckCircle2, XCircle, ChevronRight } from 'lucide-react';
 import SidebarComponent from '../../components/layout/Sidebar';
+import Drawer from '../../components/layout/Drawer';
 import SessionList from '../../components/chat/SessionList';
 import { useChatStore } from '../../stores/chat/ChatStore';
 
@@ -29,6 +30,7 @@ const QuizSession: React.FC = () => {
   const [userAnswers, setUserAnswers] = useState<Record<number, string>>({});
   const [showResults, setShowResults] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLargeScreen, setIsLargeScreen] = useState(window.innerWidth >= 1024);
 
   const {
     sessions,
@@ -90,6 +92,21 @@ const QuizSession: React.FC = () => {
     loadSessions(true, 'quiz');
   }, [loadSessions]);
 
+  // Handle screen resize
+  useEffect(() => {
+    const handleResize = () => {
+      const large = window.innerWidth >= 1024;
+      setIsLargeScreen(large);
+      // Close sidebar on mobile when transitioning from large to small screen
+      if (!large && isSidebarOpen) {
+        setSidebarOpen(false);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [isSidebarOpen, setSidebarOpen]);
+
   const handleAnswerSelect = (answer: string) => {
     setUserAnswers({
       ...userAnswers,
@@ -133,6 +150,10 @@ const QuizSession: React.FC = () => {
   };
 
   const handleSessionClick = (sessionId: string) => {
+    // Close drawer on mobile when navigating to a session
+    if (!isLargeScreen) {
+      setSidebarOpen(false);
+    }
     navigate(`/quiz/${sessionId}`);
   };
 
@@ -140,23 +161,44 @@ const QuizSession: React.FC = () => {
     navigate('/new-quiz');
   };
 
+  const sessionListContent = (
+    <SessionList
+      sessions={sessions}
+      currentSessionId={sessionId}
+      onCreateNew={handleNewQuiz}
+      onSessionClick={handleSessionClick}
+      sessionType="quiz"
+    />
+  );
+
   // Show loading state if quiz not loaded yet
   if (!quizData) {
     return (
       <div className="min-h-[calc(100vh-69px)] flex flex-col">
-        <SidebarComponent
-          title="Quiz History"
-          isOpen={isSidebarOpen}
-          onToggle={() => setSidebarOpen(!isSidebarOpen)}
-          headerHeight={69}
-        >
-          <SessionList
-            sessions={sessions}
-            onCreateNew={handleNewQuiz}
-            onSessionClick={handleSessionClick}
-            sessionType="quiz"
-          />
-        </SidebarComponent>
+        {/* Sidebar for large screens */}
+        {isLargeScreen && (
+          <SidebarComponent
+            title="Quiz History"
+            isOpen={isSidebarOpen}
+            onToggle={() => setSidebarOpen(!isSidebarOpen)}
+            headerHeight={69}
+          >
+            {sessionListContent}
+          </SidebarComponent>
+        )}
+
+        {/* Drawer for small screens */}
+        {!isLargeScreen && (
+          <Drawer
+            isOpen={isSidebarOpen}
+            onClose={() => setSidebarOpen(false)}
+            onOpen={() => setSidebarOpen(true)}
+            headerHeight={69}
+            title="Quiz History"
+          >
+            {sessionListContent}
+          </Drawer>
+        )}
 
         <div className="flex-1 flex items-center justify-center">
           <div className="loading loading-spinner loading-lg"></div>
@@ -172,21 +214,31 @@ const QuizSession: React.FC = () => {
   // Results View
   if (showResults) {
     return (
-      <div className="min-h-[calc(100vh-69px)] flex flex-col">
-        <SidebarComponent
-          title="Quiz History"
-          isOpen={isSidebarOpen}
-          onToggle={() => setSidebarOpen(!isSidebarOpen)}
-          headerHeight={69}
-        >
-          <SessionList
-            sessions={sessions}
-            currentSessionId={sessionId}
-            onCreateNew={handleNewQuiz}
-            onSessionClick={handleSessionClick}
-            sessionType="quiz"
-          />
-        </SidebarComponent>
+      <div className="flex flex-col min-h-[calc(100vh-69px)] relative">
+        {/* Sidebar for large screens */}
+        {isLargeScreen && (
+          <SidebarComponent
+            title="Quiz History"
+            isOpen={isSidebarOpen}
+            onToggle={() => setSidebarOpen(!isSidebarOpen)}
+            headerHeight={69}
+          >
+            {sessionListContent}
+          </SidebarComponent>
+        )}
+
+        {/* Drawer for small screens */}
+        {!isLargeScreen && (
+          <Drawer
+            isOpen={isSidebarOpen}
+            onClose={() => setSidebarOpen(false)}
+            onOpen={() => setSidebarOpen(true)}
+            headerHeight={69}
+            title="Quiz History"
+          >
+            {sessionListContent}
+          </Drawer>
+        )}
 
         <div className="flex-1 flex items-center justify-center p-6">
           <div className="w-full max-w-3xl">
@@ -300,21 +352,31 @@ const QuizSession: React.FC = () => {
 
   // Quiz Taking View
   return (
-    <div className="min-h-[calc(100vh-69px)] flex flex-col">
-      <SidebarComponent
-        title="Quiz History"
-        isOpen={isSidebarOpen}
-        onToggle={() => setSidebarOpen(!isSidebarOpen)}
-        headerHeight={69}
-      >
-        <SessionList
-          sessions={sessions}
-          currentSessionId={sessionId}
-          onCreateNew={handleNewQuiz}
-          onSessionClick={handleSessionClick}
-          sessionType="quiz"
-        />
-      </SidebarComponent>
+    <div className="flex flex-col min-h-[calc(100vh-69px)] relative">
+      {/* Sidebar for large screens */}
+      {isLargeScreen && (
+        <SidebarComponent
+          title="Quiz History"
+          isOpen={isSidebarOpen}
+          onToggle={() => setSidebarOpen(!isSidebarOpen)}
+          headerHeight={69}
+        >
+          {sessionListContent}
+        </SidebarComponent>
+      )}
+
+      {/* Drawer for small screens */}
+      {!isLargeScreen && (
+        <Drawer
+          isOpen={isSidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          onOpen={() => setSidebarOpen(true)}
+          headerHeight={69}
+          title="Quiz History"
+        >
+          {sessionListContent}
+        </Drawer>
+      )}
 
       <div className="flex-1 flex items-center justify-center p-6">
         <div className="w-full max-w-2xl">

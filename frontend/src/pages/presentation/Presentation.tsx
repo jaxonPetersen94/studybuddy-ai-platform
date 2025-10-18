@@ -80,12 +80,13 @@ const Presentation: React.FC = () => {
       >
         <SessionList
           sessions={sessions}
-          onNewChat={() => {
+          onCreateNew={() => {
             setInputValue('');
             setSidebarOpen(false);
           }}
           onSessionClick={handleSessionClick}
-          newChatButtonEnabled={false}
+          isCreateButtonEnabled={false}
+          sessionType="presentation"
         />
       </SidebarComponent>
 
