@@ -16,7 +16,8 @@ import NewFlashCards from './pages/flashCards/NewFlashCards';
 import FlashCardsSession from './pages/flashCards/FlashCardsSession';
 import Podcast from './pages/podcast/Podcast';
 import Presentation from './pages/presentation/Presentation';
-import Quiz from './pages/quiz/Quiz';
+import NewQuiz from './pages/quiz/NewQuiz';
+import QuizSession from './pages/quiz/QuizSession';
 import UserSettings from './pages/user/UserSettings';
 import { useThemeStore } from './stores/ThemeStore';
 import { useToastStore } from './stores/ToastStore';
@@ -83,11 +84,20 @@ function App() {
             }
           />
 
+          {/* Quiz Routes */}
           <Route
-            path="/quiz"
+            path="/new-quiz"
             element={
               <ProtectedRoute>
-                <Quiz />
+                <NewQuiz />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/quiz/:sessionId"
+            element={
+              <ProtectedRoute>
+                <QuizSession />
               </ProtectedRoute>
             }
           />

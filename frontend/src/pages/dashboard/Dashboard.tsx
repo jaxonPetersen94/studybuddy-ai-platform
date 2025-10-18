@@ -65,7 +65,7 @@ const Dashboard: React.FC = () => {
     } else if (methodId === 'flashcards') {
       navigate('/new-flashcards');
     } else if (methodId === 'quiz') {
-      navigate('/quiz');
+      navigate('/new-quiz');
     } else if (methodId === 'presentation') {
       navigate('/presentation');
     } else if (methodId === 'podcast') {
