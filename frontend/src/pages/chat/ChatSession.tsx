@@ -78,8 +78,9 @@ const ChatSession: React.FC = () => {
         >
           <SessionList
             sessions={sessions}
-            onNewChat={handleNewChat}
+            onCreateNew={handleNewChat}
             onSessionClick={handleSessionClick}
+            sessionType="chat"
           />
         </SidebarComponent>
         <div className="flex-1 flex items-center justify-center">
@@ -101,8 +102,9 @@ const ChatSession: React.FC = () => {
         <SessionList
           sessions={sessions}
           currentSessionId={currentSession?.id}
-          onNewChat={handleNewChat}
+          onCreateNew={handleNewChat}
           onSessionClick={handleSessionClick}
+          sessionType="chat"
         />
       </SidebarComponent>
 

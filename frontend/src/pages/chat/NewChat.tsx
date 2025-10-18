@@ -62,12 +62,13 @@ const NewChat: React.FC = () => {
       >
         <SessionList
           sessions={sessions}
-          onNewChat={() => {
+          onCreateNew={() => {
             setUserText('');
             setSidebarOpen(false);
           }}
           onSessionClick={handleSessionClick}
-          newChatButtonEnabled={false}
+          sessionType="chat"
+          isCreateButtonEnabled={false}
         />
       </SidebarComponent>
 

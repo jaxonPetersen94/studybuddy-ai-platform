@@ -189,12 +189,13 @@ Rules:
       >
         <SessionList
           sessions={sessions}
-          onNewChat={() => {
+          onCreateNew={() => {
             setInputValue('');
             setSidebarOpen(false);
           }}
           onSessionClick={handleSessionClick}
-          newChatButtonEnabled={false}
+          sessionType="quiz"
+          isCreateButtonEnabled={false}
         />
       </SidebarComponent>
 

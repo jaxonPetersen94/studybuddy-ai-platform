@@ -154,8 +154,9 @@ const FlashCardsSession: React.FC = () => {
         >
           <SessionList
             sessions={sessions}
-            onNewChat={handleNewSet}
+            onCreateNew={handleNewSet}
             onSessionClick={handleSessionClick}
+            sessionType="flashcards"
           />
         </SidebarComponent>
 
@@ -177,8 +178,9 @@ const FlashCardsSession: React.FC = () => {
         <SessionList
           sessions={sessions}
           currentSessionId={sessionId}
-          onNewChat={handleNewSet}
+          onCreateNew={handleNewSet}
           onSessionClick={handleSessionClick}
+          sessionType="flashcards"
         />
       </SidebarComponent>
 

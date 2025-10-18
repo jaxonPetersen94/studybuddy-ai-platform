@@ -84,9 +84,10 @@ Rules:
       >
         <SessionList
           sessions={sessions}
-          onNewChat={() => setFlashcardsInput('')}
+          onCreateNew={() => setFlashcardsInput('')}
           onSessionClick={handleSessionClick}
-          newChatButtonEnabled={false}
+          sessionType="flashcards"
+          isCreateButtonEnabled={false}
         />
       </SidebarComponent>
 

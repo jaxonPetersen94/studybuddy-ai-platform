@@ -13,27 +13,43 @@ interface Session {
 interface SessionListProps {
   sessions: Session[];
   currentSessionId?: string;
-  onNewChat: () => void;
+  onCreateNew: () => void;
   onSessionClick: (sessionId: string) => void;
-  newChatButtonEnabled?: boolean;
+  isCreateButtonEnabled?: boolean;
+  createButtonLabel?: string;
+  sessionType?: 'chat' | 'flashcards' | 'quiz' | 'presentation' | 'podcast';
 }
+
+const SESSION_TYPE_CONFIG = {
+  chat: { label: 'New Chat', icon: MessageSquare },
+  flashcards: { label: 'New Flash Card', icon: MessageSquare },
+  quiz: { label: 'New Quiz', icon: MessageSquare },
+  presentation: { label: 'New Presentation', icon: MessageSquare },
+  podcast: { label: 'New Podcast', icon: MessageSquare },
+};
 
 const SessionList: React.FC<SessionListProps> = ({
   sessions,
   currentSessionId,
-  onNewChat,
+  onCreateNew,
   onSessionClick,
-  newChatButtonEnabled = true,
+  isCreateButtonEnabled = true,
+  createButtonLabel,
+  sessionType = 'chat',
 }) => {
+  const config = SESSION_TYPE_CONFIG[sessionType];
+  const buttonLabel = createButtonLabel || config.label;
+  const ButtonIcon = config.icon;
+
   return (
     <div className="p-4">
       <button
         className="w-full btn btn-primary mb-4 flex items-center justify-center space-x-2"
-        onClick={onNewChat}
-        disabled={!newChatButtonEnabled}
+        onClick={onCreateNew}
+        disabled={!isCreateButtonEnabled}
       >
-        <MessageSquare className="w-4 h-4" />
-        <span>New Chat</span>
+        <ButtonIcon className="w-4 h-4" />
+        <span>{buttonLabel}</span>
       </button>
 
       <div className="space-y-2">

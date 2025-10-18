@@ -152,8 +152,9 @@ const QuizSession: React.FC = () => {
         >
           <SessionList
             sessions={sessions}
-            onNewChat={handleNewQuiz}
+            onCreateNew={handleNewQuiz}
             onSessionClick={handleSessionClick}
+            sessionType="quiz"
           />
         </SidebarComponent>
 
@@ -181,8 +182,9 @@ const QuizSession: React.FC = () => {
           <SessionList
             sessions={sessions}
             currentSessionId={sessionId}
-            onNewChat={handleNewQuiz}
+            onCreateNew={handleNewQuiz}
             onSessionClick={handleSessionClick}
+            sessionType="quiz"
           />
         </SidebarComponent>
 
@@ -308,8 +310,9 @@ const QuizSession: React.FC = () => {
         <SessionList
           sessions={sessions}
           currentSessionId={sessionId}
-          onNewChat={handleNewQuiz}
+          onCreateNew={handleNewQuiz}
           onSessionClick={handleSessionClick}
+          sessionType="quiz"
         />
       </SidebarComponent>
 
