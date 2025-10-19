@@ -297,7 +297,7 @@ const UserSettings: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen p-6 max-w-7xl mx-auto">
+    <div className="relative min-h-screen p-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center space-x-4 mb-2">
@@ -314,7 +314,7 @@ const UserSettings: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Sidebar Navigation */}
         <div className="lg:col-span-1">
-          <div className="card bg-base-200/80 backdrop-blur-xl border border-base-300/50 shadow-lg sticky top-6">
+          <div className="card bg-base-200/80 backdrop-blur-xl border border-base-300/50 shadow-lg sticky top-23">
             <div className="card-body p-4">
               <div className="space-y-1">
                 {tabs.map((tab) => (

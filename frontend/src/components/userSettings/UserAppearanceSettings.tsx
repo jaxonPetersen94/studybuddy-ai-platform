@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Palette, Monitor, Sun, Moon, Save } from 'lucide-react';
+import { Palette, Monitor, Sun, Moon } from 'lucide-react';
 import { AppearancePreferences, ThemeMode } from '../../types/userTypes';
 import { useUserStore } from '../../stores/UserStore';
 
@@ -12,7 +12,7 @@ const UserAppearanceSettings: React.FC<UserAppearanceSettingsProps> = ({
   currentThemeMode,
   onThemeChange,
 }) => {
-  const { user, isLoading, updatePreferences } = useUserStore();
+  const { user, isLoading } = useUserStore();
 
   // Default appearance settings
   const defaultSettings: AppearancePreferences = {
@@ -29,9 +29,6 @@ const UserAppearanceSettings: React.FC<UserAppearanceSettingsProps> = ({
   // Track the original/saved theme mode
   const [originalThemeMode, setOriginalThemeMode] =
     useState<ThemeMode>(currentThemeMode);
-
-  // Track if we're currently saving
-  const [isSaving, setIsSaving] = useState(false);
 
   // Initialize settings from user preferences when they load
   useEffect(() => {
@@ -62,27 +59,6 @@ const UserAppearanceSettings: React.FC<UserAppearanceSettingsProps> = ({
       themeMode: newThemeMode,
     };
     setLocalSettings(updatedSettings);
-  };
-
-  const handleSaveSettings = async () => {
-    if (!hasThemeChanges) return;
-
-    setIsSaving(true);
-    try {
-      await updatePreferences({
-        appearance: {
-          themeMode: currentThemeMode,
-        },
-      });
-
-      // Update the original theme mode after successful save
-      setOriginalThemeMode(currentThemeMode);
-    } catch (error) {
-      console.error('Failed to save appearance settings:', error);
-      // Error toast is already shown by the store
-    } finally {
-      setIsSaving(false);
-    }
   };
 
   const handleResetChanges = () => {
@@ -127,7 +103,7 @@ const UserAppearanceSettings: React.FC<UserAppearanceSettingsProps> = ({
               <div className="grid grid-cols-3 gap-3">
                 <button
                   onClick={() => handleThemeChange('auto')}
-                  disabled={isLoading || isSaving}
+                  disabled={isLoading}
                   className={`btn flex-col h-auto py-4 relative ${
                     currentThemeMode === 'auto' ? 'btn-primary' : 'btn-ghost'
                   }`}
@@ -140,7 +116,7 @@ const UserAppearanceSettings: React.FC<UserAppearanceSettingsProps> = ({
                 </button>
                 <button
                   onClick={() => handleThemeChange('light')}
-                  disabled={isLoading || isSaving}
+                  disabled={isLoading}
                   className={`btn flex-col h-auto py-4 relative ${
                     currentThemeMode === 'light' ? 'btn-primary' : 'btn-ghost'
                   }`}
@@ -153,7 +129,7 @@ const UserAppearanceSettings: React.FC<UserAppearanceSettingsProps> = ({
                 </button>
                 <button
                   onClick={() => handleThemeChange('dark')}
-                  disabled={isLoading || isSaving}
+                  disabled={isLoading}
                   className={`btn flex-col h-auto py-4 relative ${
                     currentThemeMode === 'dark' ? 'btn-primary' : 'btn-ghost'
                   }`}
@@ -167,39 +143,23 @@ const UserAppearanceSettings: React.FC<UserAppearanceSettingsProps> = ({
               </div>
 
               {hasThemeChanges && (
-                <div className="mt-4 space-y-3">
+                <div className="mt-4">
                   <div className="p-3 bg-warning/10 border border-warning/20 rounded-lg">
                     <p className="font-mono text-xs text-warning">
-                      // Theme changes are preview only. Click "SAVE_CHANGES" to
-                      persist changes.
+                      // Theme changes are preview only. Click
+                      "SAVE_ALL_SETTINGS" in the bottom right to persist
+                      changes.
                     </p>
                   </div>
 
-                  {/* Action Buttons */}
-                  <div className="flex gap-3">
-                    <button
-                      onClick={handleSaveSettings}
-                      disabled={!hasThemeChanges || isLoading || isSaving}
-                      className="btn btn-primary btn-sm flex-1 font-mono text-xs"
-                    >
-                      {isSaving ? (
-                        <>
-                          <span className="loading loading-spinner loading-xs"></span>
-                          SAVING...
-                        </>
-                      ) : (
-                        <>
-                          <Save className="w-3 h-3" />
-                          SAVE_CHANGES
-                        </>
-                      )}
-                    </button>
+                  {/* Reset Button */}
+                  <div className="flex justify-start pt-4 border-t border-base-300/50">
                     <button
                       onClick={handleResetChanges}
-                      disabled={!hasThemeChanges || isLoading || isSaving}
-                      className="btn btn-ghost btn-sm font-mono text-xs"
+                      disabled={!hasThemeChanges || isLoading}
+                      className="btn btn-ghost font-mono text-xs"
                     >
-                      RESET
+                      RESET_FORM
                     </button>
                   </div>
                 </div>

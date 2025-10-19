@@ -16,7 +16,7 @@ const SidebarComponent = ({
   isOpen = true,
   onToggle,
   width = 18,
-  headerHeight = 60,
+  headerHeight = 69,
 }: SidebarProps) => {
   const [internalOpen, setInternalOpen] = useState(isOpen);
   const [hasInteracted, setHasInteracted] = useState(false);

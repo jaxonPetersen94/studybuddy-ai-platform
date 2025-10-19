@@ -1,13 +1,15 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ChatBubble from '../../components/chat/ChatBubble';
 import ChatInput from '../../components/chat/ChatInput';
 import SidebarComponent from '../../components/layout/Sidebar';
+import Drawer from '../../components/layout/Drawer';
 import { useChatStore } from '../../stores/chat/ChatStore';
 import SessionList from '../../components/chat/SessionList';
 
 const ChatSession: React.FC = () => {
   const { sessionId } = useParams<{ sessionId: string }>();
+  const [isLargeScreen, setIsLargeScreen] = useState(window.innerWidth >= 1024);
   const navigate = useNavigate();
 
   const {
@@ -38,12 +40,27 @@ const ChatSession: React.FC = () => {
     } else {
       navigate('/new-chat');
     }
-  }, [sessionId]);
+  }, [sessionId, loadSession, navigate]);
 
   // Load sessions for sidebar
   useEffect(() => {
     loadSessions(true, 'chat');
-  }, []);
+  }, [loadSessions]);
+
+  // Handle screen resize
+  useEffect(() => {
+    const handleResize = () => {
+      const large = window.innerWidth >= 1024;
+      setIsLargeScreen(large);
+      // Close sidebar on mobile when transitioning from large to small screen
+      if (!large && isSidebarOpen) {
+        setSidebarOpen(false);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [isSidebarOpen, setSidebarOpen]);
 
   const handleSendMessage = async () => {
     if (!userText.trim() || isSending || !currentSession) return;
@@ -59,30 +76,60 @@ const ChatSession: React.FC = () => {
   };
 
   const handleNewChat = () => {
+    // Close drawer on mobile when creating new chat
+    if (!isLargeScreen) {
+      setSidebarOpen(false);
+    }
     navigate('/new-chat');
   };
 
   const handleSessionClick = (sessionId: string) => {
+    // Close drawer on mobile when navigating to a session
+    if (!isLargeScreen) {
+      setSidebarOpen(false);
+    }
     navigate(`/chat/${sessionId}`);
   };
+
+  const sessionListContent = (
+    <SessionList
+      sessions={sessions}
+      currentSessionId={currentSession?.id}
+      onCreateNew={handleNewChat}
+      onSessionClick={handleSessionClick}
+      sessionType="chat"
+    />
+  );
 
   // Show loading state while session is loading
   if (!currentSession && sessionId) {
     return (
       <div className="min-h-[calc(100vh-69px)] flex flex-col">
-        <SidebarComponent
-          title="Chat History"
-          isOpen={isSidebarOpen}
-          onToggle={() => setSidebarOpen(!isSidebarOpen)}
-          headerHeight={69}
-        >
-          <SessionList
-            sessions={sessions}
-            onCreateNew={handleNewChat}
-            onSessionClick={handleSessionClick}
-            sessionType="chat"
-          />
-        </SidebarComponent>
+        {/* Sidebar for large screens */}
+        {isLargeScreen && (
+          <SidebarComponent
+            title="Chat History"
+            isOpen={isSidebarOpen}
+            onToggle={() => setSidebarOpen(!isSidebarOpen)}
+            headerHeight={69}
+          >
+            {sessionListContent}
+          </SidebarComponent>
+        )}
+
+        {/* Drawer for small screens */}
+        {!isLargeScreen && (
+          <Drawer
+            isOpen={isSidebarOpen}
+            onClose={() => setSidebarOpen(false)}
+            onOpen={() => setSidebarOpen(true)}
+            headerHeight={69}
+            title="Chat History"
+          >
+            {sessionListContent}
+          </Drawer>
+        )}
+
         <div className="flex-1 flex items-center justify-center">
           <div className="loading loading-spinner loading-lg"></div>
         </div>
@@ -91,22 +138,31 @@ const ChatSession: React.FC = () => {
   }
 
   return (
-    <div className="min-h-[calc(100vh-69px)] flex flex-col">
-      {/* Sidebar */}
-      <SidebarComponent
-        title="Chat History"
-        isOpen={isSidebarOpen}
-        onToggle={() => setSidebarOpen(!isSidebarOpen)}
-        headerHeight={69}
-      >
-        <SessionList
-          sessions={sessions}
-          currentSessionId={currentSession?.id}
-          onCreateNew={handleNewChat}
-          onSessionClick={handleSessionClick}
-          sessionType="chat"
-        />
-      </SidebarComponent>
+    <div className="flex flex-col min-h-[calc(100vh-69px)] relative">
+      {/* Sidebar for large screens */}
+      {isLargeScreen && (
+        <SidebarComponent
+          title="Chat History"
+          isOpen={isSidebarOpen}
+          onToggle={() => setSidebarOpen(!isSidebarOpen)}
+          headerHeight={69}
+        >
+          {sessionListContent}
+        </SidebarComponent>
+      )}
+
+      {/* Drawer for small screens */}
+      {!isLargeScreen && (
+        <Drawer
+          isOpen={isSidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          onOpen={() => setSidebarOpen(true)}
+          headerHeight={69}
+          title="Chat History"
+        >
+          {sessionListContent}
+        </Drawer>
+      )}
 
       {/* Main Content Area - Centered */}
       <div className="flex-1 flex flex-col items-center">
