@@ -4,6 +4,7 @@ import { CheckCircle2, XCircle, ChevronRight } from 'lucide-react';
 import SidebarComponent from '../../components/layout/Sidebar';
 import Drawer from '../../components/layout/Drawer';
 import SessionList from '../../components/chat/SessionList';
+import QuizPaper from '../../components/quiz/QuizPaper';
 import { useChatStore } from '../../stores/chat/ChatStore';
 
 interface QuizQuestion {
@@ -149,6 +150,10 @@ const QuizSession: React.FC = () => {
     return { correct, total, percentage };
   };
 
+  const allQuestionsAnswered = quizData
+    ? Object.keys(userAnswers).length === quizData.questions.length
+    : false;
+
   const handleSessionClick = (sessionId: string) => {
     // Close drawer on mobile when navigating to a session
     if (!isLargeScreen) {
@@ -241,22 +246,21 @@ const QuizSession: React.FC = () => {
         )}
 
         <div className="flex-1 flex items-center justify-center p-6">
-          <div className="w-full max-w-3xl">
-            <div className="bg-base-200 rounded-lg shadow-xl p-8 border border-base-300">
-              <h1 className="text-3xl font-bold text-center mb-6">
-                Quiz Results
-              </h1>
-
-              <div className="text-center mb-8">
-                <div className="text-6xl font-bold text-primary mb-2">
-                  {score.percentage}%
-                </div>
-                <p className="text-lg text-base-content/70">
-                  You got {score.correct} out of {score.total} questions correct
-                </p>
+          <QuizPaper>
+            {/* Header - fixed at top */}
+            <div className="flex-shrink-0 text-center mb-6">
+              <h1 className="text-3xl font-bold mb-4">Quiz Results</h1>
+              <div className="text-6xl font-bold text-primary mb-2">
+                {score.percentage}%
               </div>
+              <p className="text-base text-base-content/70">
+                You got {score.correct} out of {score.total} questions correct
+              </p>
+            </div>
 
-              <div className="space-y-4 mb-6">
+            {/* Results list - scrollable */}
+            <div className="flex-1 overflow-y-auto mb-6 min-h-0">
+              <div className="space-y-3">
                 {quizData.questions.map((question, index) => {
                   const isCorrect =
                     userAnswers[index]?.toLowerCase() ===
@@ -266,7 +270,7 @@ const QuizSession: React.FC = () => {
                   return (
                     <div
                       key={question.id}
-                      className={`p-4 rounded-lg border-2 ${
+                      className={`p-3 rounded-lg border-2 ${
                         isCorrect
                           ? 'bg-success/10 border-success'
                           : wasAnswered
@@ -274,20 +278,20 @@ const QuizSession: React.FC = () => {
                           : 'bg-base-300 border-base-content/20'
                       }`}
                     >
-                      <div className="flex items-start gap-3">
+                      <div className="flex items-start gap-2">
                         {wasAnswered &&
                           (isCorrect ? (
-                            <CheckCircle2 className="w-6 h-6 text-success flex-shrink-0 mt-1" />
+                            <CheckCircle2 className="w-5 h-5 text-success flex-shrink-0 mt-0.5" />
                           ) : (
-                            <XCircle className="w-6 h-6 text-error flex-shrink-0 mt-1" />
+                            <XCircle className="w-5 h-5 text-error flex-shrink-0 mt-0.5" />
                           ))}
-                        <div className="flex-1">
-                          <p className="font-medium mb-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm mb-2">
                             {index + 1}. {question.question}
                           </p>
                           {wasAnswered && (
                             <>
-                              <p className="text-sm mb-1">
+                              <p className="text-xs mb-1">
                                 <span className="font-medium">
                                   Your answer:
                                 </span>{' '}
@@ -300,7 +304,7 @@ const QuizSession: React.FC = () => {
                                 </span>
                               </p>
                               {!isCorrect && (
-                                <p className="text-sm mb-1">
+                                <p className="text-xs mb-1">
                                   <span className="font-medium">
                                     Correct answer:
                                   </span>{' '}
@@ -310,14 +314,14 @@ const QuizSession: React.FC = () => {
                                 </p>
                               )}
                               {question.explanation && (
-                                <p className="text-sm text-base-content/70 mt-2">
+                                <p className="text-xs text-base-content/70 mt-2">
                                   {question.explanation}
                                 </p>
                               )}
                             </>
                           )}
                           {!wasAnswered && (
-                            <p className="text-sm text-base-content/50">
+                            <p className="text-xs text-base-content/50">
                               Not answered
                             </p>
                           )}
@@ -327,24 +331,28 @@ const QuizSession: React.FC = () => {
                   );
                 })}
               </div>
-
-              <div className="flex gap-3 justify-center">
-                <button
-                  onClick={() => {
-                    setShowResults(false);
-                    setCurrentQuestionIndex(0);
-                    setUserAnswers({});
-                  }}
-                  className="btn btn-outline btn-primary"
-                >
-                  Retake Quiz
-                </button>
-                <button onClick={handleNewQuiz} className="btn btn-primary">
-                  New Quiz
-                </button>
-              </div>
             </div>
-          </div>
+
+            {/* Action buttons - fixed at bottom */}
+            <div className="flex-shrink-0 flex gap-3 justify-center">
+              <button
+                onClick={() => {
+                  setShowResults(false);
+                  setCurrentQuestionIndex(0);
+                  setUserAnswers({});
+                }}
+                className="btn btn-outline btn-primary btn-sm"
+              >
+                Retake Quiz
+              </button>
+              <button
+                onClick={handleNewQuiz}
+                className="btn btn-primary btn-sm"
+              >
+                New Quiz
+              </button>
+            </div>
+          </QuizPaper>
         </div>
       </div>
     );
@@ -379,31 +387,31 @@ const QuizSession: React.FC = () => {
       )}
 
       <div className="flex-1 flex items-center justify-center p-6">
-        <div className="w-full max-w-2xl">
-          <div className="bg-base-200 rounded-lg shadow-xl p-8 border border-base-300">
-            {/* Progress */}
-            <div className="mb-6">
-              <div className="flex justify-between text-sm text-base-content/60 mb-2">
-                <span>
-                  Question {currentQuestionIndex + 1} of{' '}
-                  {quizData.questions.length}
-                </span>
-                <span>{Object.keys(userAnswers).length} answered</span>
-              </div>
-              <progress
-                className="progress progress-primary w-full"
-                value={currentQuestionIndex + 1}
-                max={quizData.questions.length}
-              ></progress>
+        <QuizPaper>
+          {/* Progress */}
+          <div className="mb-6 flex-shrink-0">
+            <div className="flex justify-between text-sm text-base-content/60 mb-2">
+              <span>
+                Question {currentQuestionIndex + 1} of{' '}
+                {quizData.questions.length}
+              </span>
+              <span>{Object.keys(userAnswers).length} answered</span>
             </div>
+            <progress
+              className="progress progress-primary w-full"
+              value={currentQuestionIndex + 1}
+              max={quizData.questions.length}
+            ></progress>
+          </div>
 
-            {/* Question */}
-            <h2 className="text-2xl font-bold mb-6">
-              {currentQuestion.question}
-            </h2>
+          {/* Question */}
+          <h2 className="text-2xl font-bold mb-6 flex-shrink-0">
+            {currentQuestion.question}
+          </h2>
 
-            {/* Answer Options */}
-            <div className="space-y-3 mb-6">
+          {/* Answer Options - scrollable area */}
+          <div className="flex-1 overflow-y-auto mb-6 min-h-0">
+            <div className="space-y-3">
               {currentQuestion.type === 'multipleChoice' &&
                 currentQuestion.options?.map((option, index) => (
                   <button
@@ -456,18 +464,20 @@ const QuizSession: React.FC = () => {
                 />
               )}
             </div>
+          </div>
 
-            {/* Navigation */}
-            <div className="flex justify-between items-center gap-4">
+          {/* Navigation - fixed at bottom */}
+          <div className="flex-shrink-0">
+            <div className="flex justify-between items-center gap-4 mb-4">
               <button
                 onClick={handlePrevious}
                 disabled={currentQuestionIndex === 0}
-                className="btn btn-outline"
+                className="btn btn-outline btn-sm"
               >
                 Previous
               </button>
 
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap justify-center">
                 {quizData.questions.map((_, index) => (
                   <button
                     key={index}
@@ -488,24 +498,24 @@ const QuizSession: React.FC = () => {
               {currentQuestionIndex === quizData.questions.length - 1 ? (
                 <button
                   onClick={handleSubmit}
-                  disabled={isSubmitting}
-                  className="btn btn-primary"
+                  disabled={isSubmitting || !allQuestionsAnswered}
+                  className="btn btn-primary btn-sm"
                 >
                   {isSubmitting ? (
                     <span className="loading loading-spinner loading-sm"></span>
                   ) : (
-                    'Submit Quiz'
+                    'Submit'
                   )}
                 </button>
               ) : (
-                <button onClick={handleNext} className="btn btn-primary">
+                <button onClick={handleNext} className="btn btn-primary btn-sm">
                   Next
-                  <ChevronRight className="w-5 h-5" />
+                  <ChevronRight className="w-4 h-4" />
                 </button>
               )}
             </div>
           </div>
-        </div>
+        </QuizPaper>
       </div>
     </div>
   );
