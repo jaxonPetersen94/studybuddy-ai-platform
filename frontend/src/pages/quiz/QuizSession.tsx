@@ -1,20 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { CheckCircle2, XCircle, ChevronRight } from 'lucide-react';
 import SidebarComponent from '../../components/layout/Sidebar';
 import Drawer from '../../components/layout/Drawer';
 import SessionList from '../../components/chat/SessionList';
 import QuizPaper from '../../components/quiz/QuizPaper';
+import QuizProgress from '../../components/quiz/QuizProgress';
+import QuizQuestion from '../../components/quiz/QuizQuestion';
+import QuizNavigation from '../../components/quiz/QuizNavigation';
+import QuizResults from '../../components/quiz/QuizResults';
 import { useChatStore } from '../../stores/chat/ChatStore';
-
-interface QuizQuestion {
-  id: number;
-  type: 'multipleChoice' | 'trueFalse' | 'shortAnswer';
-  question: string;
-  options?: string[];
-  correctAnswer: string;
-  explanation?: string;
-}
 
 interface QuizData {
   questions: QuizQuestion[];
@@ -81,6 +75,11 @@ const QuizSession: React.FC = () => {
         }
       }
 
+      // Validate the parsed data has the required structure
+      if (!parsedData || !Array.isArray(parsedData.questions)) {
+        throw new Error('Invalid quiz data structure');
+      }
+
       setQuizData(parsedData);
     } catch (error) {
       console.error('Failed to parse quiz data:', error);
@@ -136,23 +135,15 @@ const QuizSession: React.FC = () => {
     }, 500);
   };
 
-  const calculateScore = () => {
-    if (!quizData) return { correct: 0, total: 0, percentage: 0 };
-
-    const correct = quizData.questions.filter(
-      (q) =>
-        userAnswers[q.id - 1]?.toLowerCase() === q.correctAnswer.toLowerCase(),
-    ).length;
-
-    const total = quizData.questions.length;
-    const percentage = Math.round((correct / total) * 100);
-
-    return { correct, total, percentage };
+  const handleRetake = () => {
+    setShowResults(false);
+    setCurrentQuestionIndex(0);
+    setUserAnswers({});
   };
 
-  const allQuestionsAnswered = quizData
-    ? Object.keys(userAnswers).length === quizData.questions.length
-    : false;
+  const handleNewQuiz = () => {
+    navigate('/new-quiz');
+  };
 
   const handleSessionClick = (sessionId: string) => {
     // Close drawer on mobile when navigating to a session
@@ -162,9 +153,9 @@ const QuizSession: React.FC = () => {
     navigate(`/quiz/${sessionId}`);
   };
 
-  const handleNewQuiz = () => {
-    navigate('/new-quiz');
-  };
+  const allQuestionsAnswered = quizData?.questions?.length
+    ? Object.keys(userAnswers).length === quizData.questions.length
+    : false;
 
   const sessionListContent = (
     <SessionList
@@ -214,7 +205,6 @@ const QuizSession: React.FC = () => {
 
   const currentQuestion = quizData.questions[currentQuestionIndex];
   const currentAnswer = userAnswers[currentQuestionIndex];
-  const score = calculateScore();
 
   // Results View
   if (showResults) {
@@ -245,115 +235,12 @@ const QuizSession: React.FC = () => {
           </Drawer>
         )}
 
-        <div className="flex-1 flex items-center justify-center p-6">
-          <QuizPaper>
-            {/* Header - fixed at top */}
-            <div className="flex-shrink-0 text-center mb-6">
-              <h1 className="text-3xl font-bold mb-4">Quiz Results</h1>
-              <div className="text-6xl font-bold text-primary mb-2">
-                {score.percentage}%
-              </div>
-              <p className="text-base text-base-content/70">
-                You got {score.correct} out of {score.total} questions correct
-              </p>
-            </div>
-
-            {/* Results list - scrollable */}
-            <div className="flex-1 overflow-y-auto mb-6 min-h-0">
-              <div className="space-y-3">
-                {quizData.questions.map((question, index) => {
-                  const isCorrect =
-                    userAnswers[index]?.toLowerCase() ===
-                    question.correctAnswer.toLowerCase();
-                  const wasAnswered = userAnswers[index] !== undefined;
-
-                  return (
-                    <div
-                      key={question.id}
-                      className={`p-3 rounded-lg border-2 ${
-                        isCorrect
-                          ? 'bg-success/10 border-success'
-                          : wasAnswered
-                          ? 'bg-error/10 border-error'
-                          : 'bg-base-300 border-base-content/20'
-                      }`}
-                    >
-                      <div className="flex items-start gap-2">
-                        {wasAnswered &&
-                          (isCorrect ? (
-                            <CheckCircle2 className="w-5 h-5 text-success flex-shrink-0 mt-0.5" />
-                          ) : (
-                            <XCircle className="w-5 h-5 text-error flex-shrink-0 mt-0.5" />
-                          ))}
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm mb-2">
-                            {index + 1}. {question.question}
-                          </p>
-                          {wasAnswered && (
-                            <>
-                              <p className="text-xs mb-1">
-                                <span className="font-medium">
-                                  Your answer:
-                                </span>{' '}
-                                <span
-                                  className={
-                                    isCorrect ? 'text-success' : 'text-error'
-                                  }
-                                >
-                                  {userAnswers[index]}
-                                </span>
-                              </p>
-                              {!isCorrect && (
-                                <p className="text-xs mb-1">
-                                  <span className="font-medium">
-                                    Correct answer:
-                                  </span>{' '}
-                                  <span className="text-success">
-                                    {question.correctAnswer}
-                                  </span>
-                                </p>
-                              )}
-                              {question.explanation && (
-                                <p className="text-xs text-base-content/70 mt-2">
-                                  {question.explanation}
-                                </p>
-                              )}
-                            </>
-                          )}
-                          {!wasAnswered && (
-                            <p className="text-xs text-base-content/50">
-                              Not answered
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Action buttons - fixed at bottom */}
-            <div className="flex-shrink-0 flex gap-3 justify-center">
-              <button
-                onClick={() => {
-                  setShowResults(false);
-                  setCurrentQuestionIndex(0);
-                  setUserAnswers({});
-                }}
-                className="btn btn-outline btn-primary btn-sm"
-              >
-                Retake Quiz
-              </button>
-              <button
-                onClick={handleNewQuiz}
-                className="btn btn-primary btn-sm"
-              >
-                New Quiz
-              </button>
-            </div>
-          </QuizPaper>
-        </div>
+        <QuizResults
+          quizData={quizData}
+          userAnswers={userAnswers}
+          onRetake={handleRetake}
+          onNewQuiz={handleNewQuiz}
+        />
       </div>
     );
   }
@@ -388,133 +275,29 @@ const QuizSession: React.FC = () => {
 
       <div className="flex-1 flex items-center justify-center p-6">
         <QuizPaper>
-          {/* Progress */}
-          <div className="mb-6 flex-shrink-0">
-            <div className="flex justify-between text-sm text-base-content/60 mb-2">
-              <span>
-                Question {currentQuestionIndex + 1} of{' '}
-                {quizData.questions.length}
-              </span>
-              <span>{Object.keys(userAnswers).length} answered</span>
-            </div>
-            <progress
-              className="progress progress-primary w-full"
-              value={currentQuestionIndex + 1}
-              max={quizData.questions.length}
-            ></progress>
-          </div>
+          <QuizProgress
+            currentQuestion={currentQuestionIndex}
+            totalQuestions={quizData.questions.length}
+            answeredCount={Object.keys(userAnswers).length}
+          />
 
-          {/* Question */}
-          <h2 className="text-2xl font-bold mb-6 flex-shrink-0">
-            {currentQuestion.question}
-          </h2>
+          <QuizQuestion
+            question={currentQuestion}
+            currentAnswer={currentAnswer}
+            onAnswerSelect={handleAnswerSelect}
+          />
 
-          {/* Answer Options - scrollable area */}
-          <div className="flex-1 overflow-y-auto mb-6 min-h-0">
-            <div className="space-y-3">
-              {currentQuestion.type === 'multipleChoice' &&
-                currentQuestion.options?.map((option, index) => (
-                  <button
-                    key={index}
-                    onClick={() => handleAnswerSelect(option)}
-                    className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
-                      currentAnswer === option
-                        ? 'border-primary bg-primary/10'
-                        : 'border-base-content/20 hover:border-primary/50 hover:bg-base-100'
-                    }`}
-                  >
-                    <span className="font-medium">
-                      {String.fromCharCode(65 + index)}.
-                    </span>{' '}
-                    {option}
-                  </button>
-                ))}
-
-              {currentQuestion.type === 'trueFalse' && (
-                <>
-                  <button
-                    onClick={() => handleAnswerSelect('True')}
-                    className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
-                      currentAnswer === 'True'
-                        ? 'border-primary bg-primary/10'
-                        : 'border-base-content/20 hover:border-primary/50 hover:bg-base-100'
-                    }`}
-                  >
-                    True
-                  </button>
-                  <button
-                    onClick={() => handleAnswerSelect('False')}
-                    className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
-                      currentAnswer === 'False'
-                        ? 'border-primary bg-primary/10'
-                        : 'border-base-content/20 hover:border-primary/50 hover:bg-base-100'
-                    }`}
-                  >
-                    False
-                  </button>
-                </>
-              )}
-
-              {currentQuestion.type === 'shortAnswer' && (
-                <textarea
-                  value={currentAnswer || ''}
-                  onChange={(e) => handleAnswerSelect(e.target.value)}
-                  placeholder="Type your answer here..."
-                  className="textarea textarea-bordered w-full h-24 bg-base-100"
-                />
-              )}
-            </div>
-          </div>
-
-          {/* Navigation - fixed at bottom */}
-          <div className="flex-shrink-0">
-            <div className="flex justify-between items-center gap-4 mb-4">
-              <button
-                onClick={handlePrevious}
-                disabled={currentQuestionIndex === 0}
-                className="btn btn-outline btn-sm"
-              >
-                Previous
-              </button>
-
-              <div className="flex gap-2 flex-wrap justify-center">
-                {quizData.questions.map((_, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setCurrentQuestionIndex(index)}
-                    className={`w-8 h-8 rounded-full text-xs font-medium ${
-                      index === currentQuestionIndex
-                        ? 'bg-primary text-primary-content'
-                        : userAnswers[index]
-                        ? 'bg-success/20 text-success'
-                        : 'bg-base-300 text-base-content/50'
-                    }`}
-                  >
-                    {index + 1}
-                  </button>
-                ))}
-              </div>
-
-              {currentQuestionIndex === quizData.questions.length - 1 ? (
-                <button
-                  onClick={handleSubmit}
-                  disabled={isSubmitting || !allQuestionsAnswered}
-                  className="btn btn-primary btn-sm"
-                >
-                  {isSubmitting ? (
-                    <span className="loading loading-spinner loading-sm"></span>
-                  ) : (
-                    'Submit'
-                  )}
-                </button>
-              ) : (
-                <button onClick={handleNext} className="btn btn-primary btn-sm">
-                  Next
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-          </div>
+          <QuizNavigation
+            currentIndex={currentQuestionIndex}
+            totalQuestions={quizData.questions.length}
+            userAnswers={userAnswers}
+            onPrevious={handlePrevious}
+            onNext={handleNext}
+            onSubmit={handleSubmit}
+            onQuestionJump={setCurrentQuestionIndex}
+            isSubmitting={isSubmitting}
+            allQuestionsAnswered={allQuestionsAnswered}
+          />
         </QuizPaper>
       </div>
     </div>
