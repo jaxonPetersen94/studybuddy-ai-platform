@@ -4,7 +4,6 @@ version = "0.1.0"
 description = "AI processing microservice for StudyBuddy platform with OpenAI and Gemini integration"
 authors = ["Jaxon Petersen <thatCashBar@gmail.com>"]
 license = "MIT"
-readme = "README.md"
 packages = [{include = "app"}]
 
 [tool.poetry.dependencies]
